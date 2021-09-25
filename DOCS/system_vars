@@ -1,0 +1,46 @@
+System Variables
+================
+All system variables begin with a dollar sign and are read only. No other
+variable can start with a dollar. Below is a list of the system variables and 
+what they're for. All system variables start with an underscore. When BASIC has
+just started up type "dump" for a list and values.
+
+$interpreter  : Interpreter name
+$copyright    : Copyright information
+$version      : Interpreter version.
+$build_date   : Time and date interpreter was compiled.
+$build_options: Compile time build options = 
+                LINE_FLOAT_ALGO, CRYPT_HDR, DES_ONLY, NO_LOG2
+$strict_mode  : 1 or 0 depending on whether strict mode is in force. The -n
+                command line option disables it.
+$argv         : Array of words given as command line arguments. Also does not 
+                change. Get argc by doing ARRSIZE($argv)
+$env          : Array of the enviroment variables
+$num_errors   : Number of BASIC errors. 
+$run_arg      : Argument passed to a program by RUN, CHAIN or on the command 
+                line using the -r option.
+$indent       : Number of spaces LIST uses to indent program blocks.
+$pid          : Process ID of the interpreter
+$ppid         : Parent process ID of the interpreter
+$processes    : Array of child process pids.
+$uid          : Interpreter process user id
+$euid         : Interpreter process effective user id
+$ssuid        : Interpreter process saved set user id. Only set on Linux.
+$gid          : Interpreter process group id
+$egid         : Interpreter process effective group id
+$ssgid        : Interpreter process saved set group id. Only set on Linux.
+$error        : Last BASIC error
+$syserror     : Last Unix error
+$reserror     : Last resolver error
+$prog_line    : Current program line being executed.
+$error_line   : Line where the last BASIC error occured.
+$break_line   : Line where the last break (control C) occured
+$data_line    : DATA line of RESTORE or that READ has just read from. 
+                0 if not set.
+$eof          : 1 if the eof of a file/stream has been reached
+$term_cols    : Terminal column (X axis) count 
+$term_rows    : Terminal row (Y axis) count
+$pi           : Value of PI
+$e            : Value of Eulers number (natural log base)
+$true         : 1
+$false        : 0

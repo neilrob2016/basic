@@ -1,0 +1,52 @@
+                                  NRJ-BASIC
+                                  =========
+
+License
+=======
+This code is copyright Neil Robertson 2016-2017 and it is NOT GPL'd or under any
+other public license. Don't like that? Then don't use it. You have permission
+to use the interpreter to write and distribute your own programs with no 
+license fee required. You may also distribute the interpreter source code but
+you CANNOT use any of the C source code in your own projects.
+
+
+Intro
+=====
+This is an old fashioned line BASIC interpreter which probably works in much
+the way you'd expect. However since it runs in a Unix enviroment there is 
+support for things you wouldn't find in old fashioned BASICs such as multi
+process, IPC and networking.
+   There is an example_progs directory containing plenty of code to get you
+going and there is also a DOCS directory containing full documentation of all 
+the commands and functions of the language.
+
+
+Compiling
+=========
+This interpreter was written and tested on Linux, OS/X and FreeBSD 6. It should
+therefore compile and run without problems on these systems. Any other systems 
+I cannot vouch for.
+	The C source code lives in the src directory where there is a Makefile. 
+Make sure you uncomment the correct lines for your OS in this file first before 
+compiling by typing "make". 
+
+
+Running
+=======
+Once compiled just type "basic" with any of the following command line options:
+
+Usage: basic
+      [-p <.bas file>] : BASIC program file
+      [-h <lines>]     : Number of history lines. Default = 20
+      [-r <run arg>]   : Sets _run_arg system variable
+      [-a]             : Autorun program
+      [--]             : Everything following this gets passed to BASIC as
+                         _argv with _argc system variables set
+
+
+For questions or to report bugs not mentioned in BUGS then please email me 
+at the address below.
+
+Neil Robertson
+
+neilrob2016@gmail.com

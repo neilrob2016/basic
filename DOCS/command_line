@@ -1,0 +1,20 @@
+The Command Line
+================
+There are 2 command lines - the unix command line and the BASIC command line.
+To start the interpreter at the unix command line you can either type "basic"
+on its own or use it with the following self explanatory options:
+
+Usage: basic
+      [-p <.bas file>] : BASIC program file
+      [-h <lines>]     : Number of history lines. Default = 20
+      [-r <run arg>]   : Sets _run_arg system variable
+      [-a]             : Autorun program
+      [--]             : Everything following this gets passed to BASIC as
+                         $argv system variables
+
+The BASIC command line has a prompt of "]" and allows interactive editing of
+text using the arrow keys to move left and right in the text and the Insert key
+to switch between text insert and text overwrite. Use the HISTORY command to 
+show a list of previous commands you've entered and you can re-run the command 
+using !<command number> and use the EDIT command to bring a program line into
+the edit buffer to update it.

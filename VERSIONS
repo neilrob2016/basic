@@ -1,0 +1,186 @@
+November 2015
+=============
+0.5.0 
+Test version
+
+
+February 2016
+=============
+1.0.0
+Initial full version
+
+
+March 2016
+==========
+1.1.0
+- Added:
+	LPAD$()
+	RPAD$()
+	NUMSTRBASE()
+	RESERROR$()
+	$reserror
+	$pi
+	$e
+- Improved keyboard handling code
+- ESC-j & ESC-k ksh/bash vi style 1 line history scroll added.
+- Updated Makefile
+- Internal code mods and bug fixes
+
+1.1.1
+- Can now have REM or ' statements between DATA lines without a DATA exhausted
+  error occuring during a READ.
+
+
+April 2016
+==========
+1.1.2
+- Added $ssuid and $ssgid system variables.
+- Simplified Makefile slightly.
+
+
+June 2016
+=========
+1.1.3
+- Log functions return an error if the parameter is <= zero.
+- Sqrt function returns an error if the parameter is < zero.
+
+
+December 2016
+=============
+1.1.4
+- Fixed bug in FOR where an extra loop was executed if the step value skipped
+  caused the variable to skip over the "to" value.
+
+
+January 2017
+============
+1.2.0
+- Strict mode which requires dimensioning variables with DIM before using them
+  is no longer enforced for normal variables in assignments, FOR, FOREACH and
+  READ and they will now be created on the fly. The -s command line option
+  switches strict mode back on. New $strict_mode system variable created which
+  is 1 or 0 depending on the mode.
+- Added ON BREAK CLEAR
+
+
+Jan-Mar 2018
+============
+1.2.1
+- Previously DEFEXPs that were defined direct - ie not in a program - did not
+  persist as the temporary line they were on was deleted immediately. This has
+  been fixed.
+- DEFEXPs are now dumped in the DUMP & DUMPC commands.
+- INPUT now automatically creates variables if not in strict mode
+- Added wildcard matching for HELP command and output now sorted.
+- bin$(), hex$() and oct$() now return out of range error instead of zero for
+  out of range values.
+- Internal code improvements
+- Minor update to Makefile for MacOS
+
+April 2018
+==========
+1.2.2
+- Fixed case sensitive bug in HELP
+- Added case sensitive option to match()
+
+
+June 2020
+=========
+1.3.0
+- Added PATH function.
+- Added watch variables along with WATCH and UNWATCH commands.
+- Added PDIR and PDIRL commands to page directory listings.
+- Added DEFMOD and CLEARMODS commands
+- Added DEG and RAD commands to switch between degrees and radians and the
+  $angle_mode variable to display the angle type mode.
+- Added KILLALL command
+- NEW now kills all child processes still running.
+- Tracing (TRON) now traces function calls as well as commands.
+- CLS command now moves cursor to the home position (top left) of the terminal 
+  after clearing the screen.
+- Improved pattern matching so "*" will also match an empty string at the end
+  of a word.
+- Added optional UTC output to DATE$() and DATETOSECS()
+- Added '?' as a shortcut for PRINT
+- Control-D now quits interpreter (though not in INPUT command)
+
+
+November 2020
+=============
+1.3.1
+- Now checks for overflow in numeric assignments.
+- Minor code updates to remove some compile warnings.
+
+
+January 2021
+============
+1.3.2
+- Added integer line drawing option in drawLine() with LINE_FLOAT_ALGO macro
+  in Makefile.
+
+
+February 2021
+=============
+1.3.3
+- Fixed bug where by negatives following left brackets caused a syntax error.
+  eg: PRINT -(-2) would fail.
+
+
+April 2021
+==========
+1.3.4
+- Fixed bug whereby bin$(), oct$() and hex$() returned an error with zero.
+
+
+May 2021
+========
+1.4.0
+- Added MOVE command.
+- Added HAVEDATA() function.
+- Added from and to options to the HISTORY command.
+- Upgraded DUMP/DUMPC commands to accept wildcard patterns.
+- Added system variables $prog_line, $data_line, $true and $false
+- Removed pointless restriction allowing only REM statements between DATA
+  statements for continuous reads. Now READ will find the next available DATA
+  wherever it is in the program.
+- Changed command list *LIST, HISTORY and DELETE to TO.
+  eg: LIST 10,40 is now LIST 10 TO 40
+- Changed RENUM command to use FROM and fixed bug in it. 
+  eg RENUM 1,10 is now RENUM 1 FROM 10
+- Bug fixes
+
+
+July 2021
+=========
+1.4.1
+- Added "LIST TO", "HISTORY TO" and "DELETE TO" syntax.
+
+
+August
+======
+1.5.0
+- Added CDIM & CONTLOOP commands.
+- Promoted BREAK keyword to now break out of loops compared to before when it
+  only worked with CHOOSE-CHOSEN.
+- Added REGMATCH() and ISSTR() functions.
+- Renamed ISNUMTYPE() to ISNUM()
+- Lazy evaluation now done with AND operator.
+- ON ERROR/BREAK settings now reset to default when program exits.
+- Added -k option which changes kilobyte used in deriving sizes in DIR* from
+  1000 to 1024
+- Added $kilobyte system variable.
+- Colon no longer printed after THEN and ELSE in listing when the line continues
+  to make things look a bit neater.
+- Removed need to add FI at the end of a direct IF command , ie when not part of
+  a program.
+
+
+September 2021
+==============
+1.6.0
+- Added REPLACEFR$(), INSERT$(), POPEN() and EXEC() functions.
+- HOST2IP$() now returns a space seperate list of all IP addresses for the
+  host, not just the first one.
+- WAITPID() -> WAITPID$() , CHECKPID() -> CHECKPID$()
+- Added $indent system variable.
+- Tidied up EDIT line listing.

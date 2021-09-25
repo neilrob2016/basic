@@ -1,0 +1,948 @@
+                               BASIC Functions
+                               ===============
+
+General Maths
+===============================================================================
+ABS(<number>)
+
+Return the absolute value of a number. Ie if a number is negative return it
+as the positive version of itself. eg:
+
+  PRINT abs(-1)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CEIL(<number>)
+
+Return the nearest integer value above the number. eg:
+
+  PRINT ceil(0.8)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+FLOOR(<number>)
+
+Return the nearest integer value below the number.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+HYPOT (<number>,<number>)
+
+Returns the hypotenuse of the 2 numbers. eg:
+
+  PRINT hypot(3,4)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LOG(<number>)
+LOG2(<number>)
+LOG10(<number>)
+
+These return the natural logarithm, the base 2 logaritm and the base 10
+logarithm respectively. eg:
+
+  PRINT "A byte is ",log2(256)," bits"
+  PRINT "1000 is 10 to the power of ",log10(1000)
+
+The parameter must be > 0 otherwise an invalid argument error will be returned.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+MAX(<number>,<number>[,<number> * N])
+MIN(<number>,<number>[,<number> * N])
+
+Return the max and min values of the given numbers up to a maximum of 10. To 
+find the values for more than 10 simply nest the functions. eg:
+
+  PRINT max(2,3,-1,10,3)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+PARITY(<number>)
+
+This calculates the even parity of the 64/32 bit (depending on CPU) integer 
+part of the number hence it returns 0 for and even number of bits set and 1 for
+an odd number. eg:
+
+  PRINT parity(0b101)
+  PRINT parity(0xf7)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+PATH(<pattern>)
+
+This returns the first filesystem path that matches the pattern. If nothing
+matches then empty string is returned. Eg:
+
+  PRINT path("../pr*/ad*")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+POW(<number>,<power>)
+
+Returns the number raised to the given power. eg:
+
+  PRINT pow(10,3)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ROUND(<number>)
+
+This returns the nearest integer to the value. If the value is >= 0.5 then
+the integer will be higher else it will be lower. eg:
+
+  PRINT round(2.3)
+  PRINT round(2.5)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SGN(<number>)
+
+This returns -1,0 or 1 depending on whether the number is negative, zero or
+positive.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SQRT(<number>)
+
+Returns the square root of the value.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+BIN$(<number>)
+HEX$(<number>)
+OCT$(<number>)
+
+These return the number converted into binary, octal and hexadecimal strings
+respectively. If the value is out of range an error will be returned. eg:
+
+   PRINT "0b",bin$(5)
+   PRINT "0b",bin$(pow(2,32)-1)
+   PRINT "0x",hex$(65535)
+   PRINT oct$(pow(8,3)-1)
+ 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+Trigonometry
+===============================================================================
+COS(<degrees>)
+SIN(<degrees>)
+TAN(<degrees>)
+
+Return the cosine, sine or tangent of the given values in degrees. eg:
+
+  PRINT "100kg on a 20 deg slope requires a ",100 * SIN(20),"kg force to hold it"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ACOS(<number>)
+ASIN(<number>)
+ATAN(<number>)
+
+Returns the arc sin/cos/tan which is the inverse of the above. eg:
+
+  DIM s = SIN(20)
+  PRINT "If the sin = ",s," the slope angle is ",asin(s)," degrees"
+
+ACOS and ASIN can only accept values in the range -1 to 1. Anything else will
+generate an out of range error.
+
+
+Strings 
+===============================================================================
+ASC(<character>)
+
+Returns the ascii code of the given character. eg:
+
+  PRINT asc("A")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CHR$(<0-255>)
+
+Print the ascii character for the given code value. eg:
+
+  DIM i
+  FOR i = 32 TO 255: PRINT chr$(i);: NEXT
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ELEMENT$(<string>,<element position>)
+
+Print the given element/word (whitespace is the delimiter) in the string. 
+Counting starts at one. eg:
+
+  PRINT element$("  hello   cruel  world",2)
+
+If you want to get the element from a non whitespace delimited string the
+use REPLACE$() first to convert the delimiters to whitespace. eg:
+
+  PRINT element$(replace$("--hello---cruel-world--","-"," "),2)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ELEMENTCNT(<string>)
+
+Prints the number of elements/words in the string. As above whitespace is
+the delimiter. eg:
+
+   PRINT elementcnt("hello cruel world")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ERROR$(<error number>)
+
+Print the BASIC error string. Error numbers start at 0 and go up to
+$num$errors - 1. eg:
+
+   10 DIM i
+   20 FOR i = 0 TO $num$errors - 1
+   30     PRINT format$("%%",i),": ",error$(i)
+   40 NEXT 
+
+If ON ERROR GOTO/GOSUB is used this can be used to display the error that
+occured using:
+
+   PRINT error$($error)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RESERROR$(<resolver error number>)
+
+This prints the network address resolver error. eg:
+
+   eval host2ip$("blahblah")
+   print "Error = ",reserror$($reserror)
+   eval ip2host("0.0.0.0")
+   print "Error = ",reserror$($reserror)
+   
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SYSERROR$(<unix error number>)
+
+This prints the unix system error string. The range also starts at zero but the
+upper limit is OS defined. Use this to find out what unix error occured if a
+system function failed. eg:
+
+   EVAL open("thisfiledoesntexist","r")
+   PRINT syserror$($syserror)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+FORMAT$(<format string>,<number>)
+
+This command is used to format numbers. The format tokens characters are
+'#','%' and '!'. A hash means print the exact amount of digits given by the
+number of hashes and pad with zeros if they're arn't enough. eg:
+
+   PRINT format$("##.##",1.2)
+   PRINT format$("##.##",1.234)
+   PRINT format$("##.##",1234.1234)
+
+A percent sign means pad with spaces. eg:
+
+   PRINT "--",format$("%%.%%",1.2),"--"
+
+An exclamation mark put at either or both ends of the format string means 
+don't pad at the given end. eg:
+
+   PRINT format$("!##.##",1.2)
+   PRINT format$("!##.##!",1.2)
+
+Note that the tokens put an absolute limit on the number of digits displayed
+so if your number is bigger than the format the digits on the end either side
+of the decimal point will be dropped. eg:
+
+   PRINT format$("##.##",123.456)
+
+You can also put miscellanious characters into the string which will be mixed
+in with the numbers digits. However if you use '!' any extra characters the 
+"wrong" side of them will be dropped. eg:
+
+   PRINT format$("ab#cd#.#ef#",12.3)
+   PRINT format$("!ab#cd#.#ef#!",12.3)
+
+See the programs/format.bas program for more examples.
+
+Note that this function currently only left pads with space, it doesn't do
+right padding. To right pad a number use tostr$() and rpad$(). eg:
+
+PRINT "--",rpad$(tostr$(123)," ",10),"--"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+INSERT$(<string 1>,<string 2>,<position>)
+
+Inserts string 2 into string 1 at the given position and returns the result.
+All characters from the position inclusive are shifted up. If the position is
+off the end of string 1 then string 2 is simply concatenated onto the end.
+eg:
+
+   PRINT insert$("hello","---",1)
+   PRINT insert$("hello","---",10)
+
+See programs/insert.bas
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+INSTR(<haystack>,<needle>,<start position>)
+
+This searches the haystack string for the needle string starting at the given
+string position which starts from 1. eg:
+
+   PRINT instr("hello","el",1)
+
+If the needle isn't found then -1 is returned.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ISNUMSTR(<string>)
+
+Returns 0 or 1 depending on whether the string contains a valid number
+optionally including the negation sign and a decimal point. The number can
+also be binary, hexadecimal and octal. eg:
+
+   PRINT isnumstr("hello")
+   PRINT isnumstr("-1.23")
+   PRINT isnumstr("0xFF")
+   PRINT isnumstr("0b101")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LEFT$(<string>,<len>)
+RIGHT$(<string>,<len>)
+
+These return the portions of the string of the given length starting from the
+left or right of the string. eg:
+
+   PRINT left$("123",3)
+   PRINT right$("123456",3)  
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LOWER$(<string>)
+UPPER$(<string>)
+
+Converts strings to their lower and uppercase equivalents. eg:
+
+   PRINT lower$("HELLO")
+   PRINT upper$("hello")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+MAX$(<string>,<string>[,<string> * N])
+MIN$(<string>,<string>[,<string> * N])
+
+These work in exactly the same way as MAX and MIN for numbers except they
+do it for strings. eg:
+
+   PRINT max$("abc","xyz","def","z")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+MATCH(<string>,<pattern>,<case sensitive 0/1>)
+
+This does simple matching against a wildcard pattern that can contain '*' and
+'?' returning 1 for a match else 0. It does not use regular expressions. eg:
+
+   PRINT match("hello","h?l*",0)
+   PRINT match("hello","H?l*",0)
+   PRINT match("hello","H?l*",1)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+REGMATCH(<string>,<pattern>)
+
+This does regular expression pattern matching. eg:
+
+   PRINT regmatch("hello",".*el.*")
+   PRINT regmatch("hello","[hH]ello")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LPAD$(<string>,<pad character>,<pad length>)
+RPAD$(<string>,<pad character>,<pad length>)
+
+These functions return the input string left or right padded to the given 
+length using the pad character. The pad character must be a single character 
+and the length must be >= 0 otherwise an invalid argument error will occur.
+Note that left padding (ie put pad characters to the left of the string) = 
+right justify and right padding = left justify. eg:
+
+   PRINT lpad$("hello","-",10)
+   PRINT rpad$("hello","-",10)
+
+If the pad length is <= the string length then the string is returned
+unaltered.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+NUMSTRBASE(<string>)
+
+Returns the base of the number stored in the string which can be one of the 
+values 2,8,10 & 16. If the string does not contain a valid number then zero is 
+returned. eg:
+
+   PRINT numstrbase("12.34")
+   PRINT numstrbase("0xFF")
+   PRINT numstrbase("0b101")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+REPLACE$(<string>,<old>,<new>)
+REPLACEFR$(<string>,<old>,<new>,<from position>)
+
+This replaces all instances of the "old" string in the main string with the
+"new" string. Both can be more than 1 character and do not have to be the same
+size. REPLACEFR$() starts doing it from the given start position.
+eg:
+
+   PRINT replace$("hello world","l","xx")
+   PRINT replace$("hello world","ll","-")
+   PRINT replacefr$("hello hello hello","e","xx",6)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LSTRIP$(<string>)
+RSTRIP$(<string>)
+STRIP$(<string>)
+
+These strip any left hand, right hand and all whitespace respectively from the
+input string. eg:
+
+   PRINT "--",lstrip$("  hello  "),"--"  
+   PRINT "--",rstrip$("  hello  "),"--"
+   PRINT "--",strip$("  hello  "),"--" 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+STRLEN(<string>)
+
+Returns the length of the string.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SUB$(<string>,<from>,<length>)
+
+Prints a substring of the input string starting at "from" - which begins at
+position 1 - for the given length. eg:
+
+   PRINT sub$("12345",2,3) 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+TONUM(<number string>)
+
+This converts the string containing a valid number into an actual number. eg:
+
+   10 DIM num
+   20 WHILE 1
+   30     PRINT "Enter a number>";: INPUT num
+   40     IF isnumstr(num) THEN 
+   50         PRINT tonum(num) * 2
+   60     ELSE 
+   70         PRINT "Not a number"
+   80     FI 
+   90 WEND 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+TOSTR$(<number>)
+
+This converts the number into a string containing the number. eg:
+
+   PRINT "First digit = ",left$(tostr$(123),1)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+Date & time
+===============================================================================
+DATE$(<seconds since epoch>,<format string>)
+
+This converts the seconds into a datetime string using the format string. The 
+format is identical to the one used by the C strftime() function and its man 
+page goes into great detail about all the formatting codes. eg:
+
+   10 WHILE 1
+   20     PRINT date$(time(),"%Y-%m-%d %H-%M-%S")
+   30     SLEEP 1
+   40 WEND 
+
+Output is in local time unless the character 'U' is placed at the beginning
+of the string in which case the output will be in UTC. eg:
+
+PRINT date$(time(),"U%Y-%m-%d %H-%M-%S")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+DATETOSECS(<date string>,<format string>)
+
+This does the opposite of the above function. It takes a date string and a
+matching format string and converts the date back into seconds since the epoch.
+If the format does not match the date an invalid argument error is returned.
+Also as above a 'U' at the start of the format indicates the time is in UTC.
+eg:
+
+   PRINT datetosecs("2016-01-13 16-42-59","%Y-%m-%d %H-%M-%S")
+   PRINT datetosecs("2016-01-13 16-42-59","U%Y-%m-%d %H-%M-%S")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+TIME()
+
+This function takes no arguments and simply returns the number of seconds
+since the Unix epoch (1/1/1970).
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+Values and Variables
+===============================================================================
+ISNUM(<value>)
+
+Returns 1 if the value is a number, else 0. eg:
+
+   DIM a(10) = 123
+   a(1) = "hello"
+   PRINT isnum(a(1))," ",isnum(a(2))
+   PRINT isnum("hello")
+   PRINT isnum(123)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ISSTR(<value>)
+
+Returns 1 if the value is a string, else 0. eg:
+
+   DIM a(10) = 123
+   a(1) = "hello"
+   PRINT isstr(a(1))," ",isstr(a(2))
+   PRINT isstr("hello")
+   PRINT isstr(123)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ARRSIZE(<array variable>)
+
+Returns the absolute size of an array. eg:
+
+   DIM a(2,5)
+   PRINT arrsize(a)
+
+The above would print 10.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+GETKEY$(<map variable>,<key number>)
+
+This is a way to return the key by its position in the map so you can 
+iterate through all the keys. eg:
+
+  FOR i = 1 to mapsize(m)
+     key = getkey$(m,i)
+     PRINT "Key = ",key," value = ",m(key)
+  NEXT
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+HASKEY(<map variable>,<key>)
+
+Returns 1 if the map has the key else 0. eg:
+
+   DIM m#
+   m("hello") = "world"
+   PRINT haskey(m,"hello")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+MAPSIZE(<map variable>)
+
+Returns the number of key-value entries in the map. eg:
+
+   DIM m#
+   m("a") = "b"
+   m("b") = "c"
+   PRINT mapsize(m)
+
+The above would return 2.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Files, directories & general I/O
+===============================================================================
+CANREAD(<stream>)
+CANWRITE(<stream>)
+
+Returns 1 or 0 depending on whether a file/pipe/socket stream can be
+read/written to or not. eg:
+
+   DIM fd = open("/etc/passwd","r")
+   PRINT canread(fd)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CHDIR(<directory path>)
+
+This changes the working directory. On success it returns 1 else 0 with
+$syserror set. eg:
+
+   EVAL chdir("/tmp")
+   PRINT getdir()
+   EVAL system("pwd")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+GETDIR()
+
+This returns the current working directory. If an error occurs (highly unlikely)
+then an empty string is returned and $syserror is set. eg:
+
+   PRINT getdir()
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LSTAT$(<filesystem object>)
+STAT$(<filesystem object>)
+
+These return information about a file system object such as a file or directory.
+The LSTAT function is like STAT except in the case where the named file is a 
+symbolic link - LSTAT returns information about the link, while STAT returns 
+information about the file the link references. The information returned in a
+string is as follows:
+
+<type> <mode> <uid> <user name> <gid> <group name> <size> <last access time>
+<last modified time> <last status change time> <number of hard links>
+
+eg:
+
+] print stat$("/")
+DIR 0755 0 root 0 wheel 1292 1452187111 1450350083 1450350083 36
+]
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+MKDIR(<directory path>)
+
+This creates a new directory with the given path name. Wildcards are not
+supported and neither are directory permissions (setting file permissions is
+not supported at all in BASIC currently). The directory is created with full
+rwx permissions minus the users umask. On success 1 is returned else 0 with
+$syserror set. eg:
+
+   IF NOT mkdir("/blah") THEN PRINT syserror$($syserror) FI
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+OPEN(<filename>,<mode>)
+
+This opens the file and returns a stream number that can be used with other
+filesystem functions and the PRINT, INPUT, CINPUT and CLOSE commands. The modes 
+are:
+
+ r : Read only
+ w : Write only. Truncate file if it exists first else create it.
+ o : Write only without truncation (overwrite).
+ rw: Read and write to a file. Don't truncate.
+ a : Append to file
+
+eg:
+   DIM fd = open("wibble","w")
+   PRINT #1,"hello world"
+
+Note that the tilda shortcut (~) for the users home directory is not currently
+supported - use getenv$("HOME") instead. Also setting file permissions is not 
+supported in BASIC - all files created default to rw-rw-rw minus the users
+umask.
+ 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+OPENDIR(<directory name>)
+
+This opens a directory to read the names of the filesystem objects inside it.
+Each filename is read with a single INPUT call.
+eg:
+
+   DIM fd = opendir(".")
+
+As per OPEN(), tilda is not supported. See programs/dir.bas for further 
+examples.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RMDIR(<directory name>)
+RMFILE(<file name>)
+
+These functions remove a directory and file respectively and can take wildcard
+names (though they will only remove ONE file/dir). If the function succeeds it 
+returns the name of the file/dir it deleted, else it returns 0 and sets 
+$syserror. eg:
+
+   10 DIM file = rmfile("/etc/pas*")
+   20 IF file = "" THEN 
+   30     IF $syserror THEN 
+   40         PRINT "ERROR: ",syserror$($syserror)
+   50     ELSE 
+   60         PRINT "File not found"
+   70     FI 
+   80 ELSE 
+   90     PRINT "Removed: ",file
+  100 FI 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SEEK(<stream>,<distance in bytes>)
+
+This will (usually) only work on files and in this case the distance is the
+number of bytes from the start of the file. If the seek works then the 
+function returns 1 , else 0 with $syserror set. eg:
+
+   10 DIM l,fd = open("/etc/passwd","r")
+   20 IF seek(fd,10) THEN 
+   30     INPUT #fd,l
+   40     PRINT l
+   50 FI 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SELECT(<read stream array>,<write stream array>,<timeout>)
+
+This function waits until either a stream n the read array is ready to
+read or a stream in the write array is ready to write and will return
+the number of streams in that state unless a timeout is set. If a timeout
+is set it will wait until that time then return even if no streams are
+ready. A timeout of -1 means wait forever. The arrays entries themselves must 
+either have a valid stream or -1 in which case it will be ignored. So if
+you're not interested in whether something can be written to you would declare
+a write array of size 1 and set it to -1. eg:
+
+   DIM r(2),w(1)
+   w(1) = -1
+   r(1) = fd1
+   r(2) = fd2
+   IF select(r,w,-1) < 0 THEN
+     <error occured>
+
+The arrays entries are set to 1 or 0 depending if the stream that was
+there was ready or not (meaning the non -1 array entries must be reset before
+each SELECT call). eg:
+
+   IF r(1) THEN
+     <read from fd1>
+   FI
+
+See the programs/pipes2.bas, tcp_client.bas and tcp_server.bas programs
+for more information.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+User & groups
+===============================================================================
+GETUSERBYID$(<user id>)
+GETUSERBYNAME$(<user name>)
+
+Returns Unix user information based on the uid or name. eg:
+
+   PRINT getuserbyid$($uid)
+   PRINT getuserbyname$(element$(getuserbyid$($uid),2))
+
+The output is space seperated list and has the following format:
+
+<user id> <username> <group id> <home dir> <shell path> <Full name/gecos>
+
+The full name can be more than one word hence its at the end. If there is no
+such user then an empty string is returned.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+GETGROUPBYID$(<group id>)
+GETGROUPBYNAME$(<group name>)
+
+Returns the Unix group information based on the gid. eg:
+
+   PRINT getgroupbyid$($gid)
+   PRINT getgroupbyname$(element$(getgroupbyid$($gid),2))  
+
+The output has the following format:
+
+<group id> <group name> [<member name> * N]
+
+The member names are the usernames of all the users who belong to the group
+and is a list of arbitrary length.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+Processes and IPC
+===============================================================================
+
+POPEN(<command string>,<flags>)
+This works in the same way as the popen() C function and the command string
+and the flags get passed through to it unchanged. The flags are usually r,w
+and r+. The descriptor returned can be read and written to like any other
+descriptor and CLOSE closes it.
+
+eg: fd = popen("ls -l","r")
+
+See: programs/popen.bas
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+FORK()
+
+This creates a child process. On success it returns the child PID to the 
+parent/calling process and 0 to the child process. On failure it returns -1
+and no child is created. See programs/fork.bas for example code.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+EXEC(<command string>,<pipe variable>)
+
+Execute the command and return its stdin, out and error through index 2 of
+the pipe. Index 1 is used for the parent process I/O. If this function succeeds
+it never returns. This could have been a command but I made it a function 
+simply for consistency with fork(), popen() and system().
+
+See: programs/exec.bas
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+PIPE(<array variable>)
+
+The array variable must be a single dimension array of size 2. On success
+the function returns 1 and the array is populated with 2 file streams for
+both sides of the pipe which are read/write. See programs/pipes*.bas
+for example code.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+KILL(<process id>,<signal number>)
+
+This kills the given process id. If it succeeds it returns 1 else 0. Use 
+signal number 9 to kill a process no matter what its status. eg:
+
+   IF NOT kill(1234,9) THEN PRINT "Couldn't kill process" FI
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CHECKPID$(<process id>)
+WAITPID$(<process id>)
+
+These both check the status of the given child process and reap it if it has
+died unless the id is -1 in which case they reap any child process that has
+died. The difference between the 2 commands is that CHECKPID doesn't block if
+there are no processes to reap whereas WAITPID does. The return value is a
+string describing the dead process if there was one. The following is the
+output format:
+
+  <child pid> <mesg> [<number> [CORE/NOCORE]]
+
+Where CORE/NOCORE says whether a coredump has occured. The following are
+the full list of possible formats:
+
+0 NOCHILD     - No child processes to wait for.
+0 NOEXIT      - No child processes have exited (CHECKPID only)
+0 ERROR       - An error occured.
+<pid> NODATA  - No information about process exit.
+
+<pid> EXIT <exit code>                    - Normal exit
+<pid> SIGNAL <signal number> CORE/NOCORE  - Killed by signal
+<pid> CONT <SIGCONT signal number>        - Process sent SIGCONT
+<pid> STOP <status code>                  - Process stopped
+
+See programs/waitpid.bas & checkpid.bas for example code.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+TCP
+===============================================================================
+CONNECT(<hostname[:port]>)
+
+Attempts to make a TCP connection to the hostname on the optional port (23 if
+not specified). If name resolution fails then $reserror is set, or if the
+connect itself fails then $syserror is set. It returns a read/write stream
+for the connection. See programs/tcp_client.bas. eg:
+
+   DIM sock = connect("localhost:25")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+HOST2IP$(<hostname>)
+
+Returns a space seperated string of the IP numbers. If the host cannot be 
+resolved it returns an empty string and $reserror is set. eg:
+
+   PRINT host2ip("localhost")
+
+See programs/host2ip.bas
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+IP2HOST$(<ip number string>)
+
+Returns the hostname. If the ip number does not have an entry in /etc/hosts
+and no DNS entry then an empty string is returned and $reserror is set. If the 
+IP number has an invalid format then an invalid argument error occurs. If 
+the number is valid but can't be resolved then $reserror is set. eg:
+
+   PRINT ip2host("127.0.0.1")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ACCEPT(<listening socket stream>)
+
+This accepts a connection on a listening socket (created by listen()) and 
+returns a read/write socket stream. See programs/tcp_server.bas for
+example usage.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LISTEN(<port number>,<queue length>)
+
+This creates a listening socket on the TCP port number and returns a listening
+socket stream. The queue length is the length of connections that can be 
+queued up on the socket that have not been accepted. eg:
+
+   DIM lsock = listen(4000,20)
+
+If the port cannot be used then a socket error is returned and $syserror is 
+set. See programs/tcp_server.bas for full example code.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+GETIP$(<socket stream>)
+
+This returns the numeric IP address of the remote host connected to the 
+socket stream created by accept(). eg:
+
+   sock = accept(listen_sock)
+   host = ip2host$(getip$(sock))
+
+See programs/tcp_server.bas for full example code.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Enviroment variables
+===============================================================================
+GETENV$(<enviroment var name>)
+SETENV(<enviroment var name>,<new string value>)
+
+GETENV$() returns the value of the enviroment variable or "" if it does not
+exist. SETENV() sets the value and creates the variable if it doesn't already
+exist. It returns 1 on success else 0 and $syserrno. Note the '$' in GETENV$() 
+because it returns a string value, but not in SETENV(). eg:
+
+   EVAL setenv("HOME","/tmp") 
+   PRINT getenv$("HOME")
+   EVAL system("echo $HOME")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+System
+===============================================================================
+SYSTEM(<string>)
+
+This executes unix shell commands. The return value is 1 for success and 0 for 
+fail with $syserror set if the system() API function itself failed.  Note 
+however that if 0 is returned and $syserror is also 0 this means that the 
+system() API function ran ok but the unix shell failed to execute the given
+command.
+
+Standard out/error return data from the shell cannot currently be captured by 
+BASIC. eg:
+
+   PRINT system("ls -l")
+
+See programs/system.bas for example code.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SYSINFO$(<field name>)
+
+This returns information about the OS or machine. The field name options are:
+
+   OS       : Returns OS kernel name, eg "Linux", "Darwin"
+   RELEASE  : OS release number
+   VERSION  : OS version information
+   HOSTNAME : Machine hostname
+   CPU      : Machine CPU type
+
+If an unknown field name is given then an invalid argument error occurs.
+
+eg:
+
+   PRINT sysinfo$("os") + " " + sysinfo$("release")
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Miscellanious
+===============================================================================
+RAND()
+
+This returns a random floating point number from 0 to 1 inclusive.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CRYPT(<string>,<2 character salt>,<encryption type>)
+
+This encrypts the string using the given salt and encryption type using the
+crypt() api function. The supported encryption types are:
+
+   DES
+   MD5
+   SHA256
+   SHA512
+
+Only DES is supported under MacOS and an error will occur if any other type is
+attempted to be used. Note that unlike the crypt() API function the string 
+returned does not include the salt. eg:
+
+
+   print crypt("hello world","xy","SHA512")
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Data
+===============================================================================
+HAVEDATA()
+
+Returns 1 if there is still DATA to read, else 0. The criteria to return 1
+is that either the read pointer is currently in a DATA statement or there is
+another DATA statement following with only REM statements allowed inbetween.
+

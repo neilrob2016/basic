@@ -1,0 +1,1025 @@
+                            BASIC Commands
+                            ==============
+
+This document divides the commands into functional areas.
+
+Interpreter
+===============================================================================
+EXIT [<exit code>]
+
+Exits the interpreter with the optional exit code ($? in the shell). If no
+code is given the the exit code is zero. eg:
+
+   EXIT 1
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Program 
+===============================================================================
+DELETE <line>
+DELETE <from line number> TO <to line number>/END
+DELETE TO <line>
+DELETE TO END
+
+This deletes one or more line numbers from the program. END means delete to
+the end of the program. This command cannot be used within a program.
+
+eg: DELETE 20        - Deletes line 20
+    DELETE 20 TO 50  - Deletes line 20 to 50 inclusive
+    DELETE 20 TO END - Deletes program from line 20 onwards.
+    DELETE TO 50     - Deletes all lines to 50 inclusive.
+    DELETE TO END    - Deletes all lines. 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+INDENT <spaces>
+
+Sets the number of spaces to indent a block by in the listing. If set to zero
+then the program will not be indented. The current value of the indenting can
+be got from the $indent system variable.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LIST
+LIST <line>
+LIST <from line number> TO <to line number>/END
+LIST TO <line>
+LIST TO END 
+
+With no arguments it lists the entire program. Or you can give it one line
+to list or a range.
+
+eg:
+  LIST           - Lists the whole program.
+  LIST 20        - Lists line 20 only.
+  LIST 20 TO 40  - Lists lines 20 to 40 inclusive
+  LIST 20 TO END - Lists the whole program from line 20 onwards.
+  LIST TO 30     - Lists all lines up to 30 inclusive.
+  LIST TO END    - Same as LIST.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LLIST [<from line number>[,[<to line number>]]]
+
+As LIST except it sends the listing to the current default printer for the
+system. Internally it shells out to the unix "lp" command which must be in
+the $PATH. If the lp command doesn't work at the unix command prompt it won't
+work here either.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+PLIST [<from line number>[,[<to line number>]]]
+
+As LIST except it will pause with a prompt once it has displayed $term_rows - 3
+number of lines. Pressing space will advance by one line, any other key will
+advance by an entire page.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+MOVE <old line number> TO <new line number>
+
+This moves a line within the program. The new line number cannot exist. This
+command can be used in a program for interesting effects. See the example
+programs/move.bas
+
+eg:
+] list
+   10 PRINT 10
+   20 PRINT 20
+   30 PRINT 30
+   40 PRINT 40
+] move 10 to 35
+] list
+   20 PRINT 20
+   30 PRINT 30
+   35 PRINT 10
+   40 PRINT 40
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+NEW
+
+This deletes all program lines and current user variables, resets some system
+variables, kills all child processes created by fork() and resets keyboard
+modifiers created with DEFMOD. It also resets the angle type back to DEG. It 
+takes no arguments.
+   If you wish to delete all program lines but not delete any variables just
+do DELETE TO END.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RENUM 
+RENUM <line number spacing>
+RENUM <line number spacing> FROM <start line>
+
+This renumbers all the lines in the program including any in a GOTO, GOSUB, 
+RESTORE and AUTORETORE call so long as they are not part of an expression. The
+spacing defaults to 10 and the start line to the first line if you do not 
+supply them.
+
+eg: RENUM 1 FROM 100  -- Number the lines 100,101,102 etc from 100 onwards.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RUN [<run argument>]
+
+This clears all current variables then commences execution of the program.
+It can take a single argument which sets the $run_arg system variable which
+your program can use. eg:
+
+] 10 PRINT "Run arg = ",$run_arg
+] run "test1"
+Run arg = test1
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+WRON/WROFF
+
+Switch line wrap on & off. When on, BASIC tries to intelligently wrap lines in 
+the listing rather than leaving it up to the terminal. 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+TRON/TRONS/TROFF
+
+Switches program tracing on & off. This causes tracing information to be
+printed out every time a command and function is executed. The TRONS command
+is identical to TRON except that it causes stepped tracing, ie program 
+execution is stopped at each trace print and you have to press a key to make it
+continue.
+
+eg:
+
+] 10 print abs(1)
+] tron
+] run
+[0,COM,RUN]
+[10,COM,PRINT]
+[10,FUN,abs]
+] trons
+[0,COM,TRONS]: 
+] print abs(-1) + asc("A")
+[0,COM,PRINT]: 
+[0,FUN,abs]: 
+[0,FUN,asc]: 
+66
+
+If the tracing is in a child process created by the fork() function then 
+the childs process id is prepended in front of the line number.
+
+eg: [18046,30,COM,PRINT]
+
+A minor issue to note with TRONS is that it doesn't play well with "ON BREAK".
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+WATCH [<variable>[,<variable] * N]
+
+This switches variable watching on. You can watch multiple variables at a time
+and they do not have to exist before a watch is set on them. If the command is
+used on its own it prints a list of current watched variables. Watch variables
+are cleared by UNWATCH and NEW.
+
+Eg:
+
+] watch a,b,c
+] watch
+Watched variables: a, b, c
+] a="hello"
+{DIM,STD,a(1)}
+{LET,a="hello"}
+] dim b(10)
+{DIM,STD-ARRAY,b(10)}
+] b(2) = 123
+{LET,b(2)=123.000000}
+] dim c#
+{DIM,MAP,c(0)}
+] c("hello") = "world"
+{LET,c("hello")="world"}
+] clear b
+{CLR,STD-ARRAY,b}
+] delkey c,"hello"
+{DEL,c("hello")}
+]
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+UNWATCH [<variable>[,<variable] * N]
+
+This switches off variable watching. If no variables are given it clears the
+entire list. Eg:
+
+] watch a,b,c
+] watch
+Watched variables: a, b, c
+] unwatch b
+] watch
+Watched variables: a, c
+] unwatch
+All watch variables cleared.
+] watch
+There are no variables being watched.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+EDIT <line>
+
+This brings the given line number into the current edit buffer for you to
+edit using standard cursor control keys.
+
+
+
+Load/save
+===============================================================================
+LOAD "<program name>"
+
+Load the given program into memory. The wildcards * and ? are accepted anywhere
+in the path and the first matching file will be the one loaded. The program
+name is automatically appended with ".bas" if its not included. eg:
+
+LOAD "../example*/*3d"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CHAIN "<program name>"[,<run argument>]
+
+As LOAD except after loading it will run the program. The optional 2nd parameter
+sets the system variable $run_arg.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+MERGE "<program name>"
+
+Load a program over the top of the current program in memory. Any duplicate
+line numbers will be overwritten but line numbers that do not exist in the
+new program will remain from the old program.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SAVE "<program name>"
+
+Save the program to disk. Wildcards are permitted except in the actual filename.
+As with LOAD the program name is automatically appended with ".bas" if its not 
+included.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Variables
+===============================================================================
+DIM <var>[#/@][(<arrsize>)] [= <value>][,<var>...]
+
+Dimension (create) a variable. There are 3 main types of variable: Standard, map
+(dictionary) and shared memory. Standard can be further subdivided into arrays
+and non arrays. eg:
+
+DIM a
+DIM b(10)
+DIM c#     -- map
+DIM d@(20) -- shared memory variable
+
+The number with the shared memory variable is NOT an array size but the number
+of bytes to reserve in memory. Shared memory variables are not arrays but simple
+variables and are designed to share data between BASIC processes.
+	It is possible to assign a value after declaration to all but map 
+variables. eg:
+
+DIM b(10) = "hello"
+
+IN the above example "hello" is assigned to every element in b. Maps are 
+assigned using a keyword and value. The keyword must be a string, the value 
+can either be a string or a number.
+
+eg:
+
+c("hello") = "world"
+
+Variable declarations can be chained:
+
+DIM a="one",b,c="three"
+
+Note:
+As of version 1.2.0 strict mode which enforces explicitly dimensioning standard
+variables with a DIM before using them in assignments, FOR, FOREACH and READ
+is no longer the default. The -s command line option switches it back on. 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CDIM <var>[#/@][(<arrsize>)] [= <value>][,<var>...]
+
+This is the same as DIM except it clears the variable first. eg:
+
+CDIM a(10)
+
+is the same as
+
+CLEAR a(10)
+DIM a(10)
+
+except that if the variable does not already exist it will not error whereas
+CLEAR will.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+REDIM <array var>(<arrsize>) [= <expression>[,<var> * N]]
+
+This is for redimensioning the size of arrays only and cannot shrink the size
+of an array, however it can change the number of dimensions. eg:
+
+DIM d(10) = 123, e(20)
+:
+:
+REDIM d(2,5) = 456, e(10,10)
+
+All data is retained after a REDIM though it may appear in a different location
+if the number of dimensions are altered. REDIM can initialise an array just
+like DIM. 
+
+The reason REDIM is a seperate command instead of letting DIM resize a 
+pre-existing array is simply for safety. REDIM makes it clear the array is
+being resized at the given point in the program rather than being initially
+created.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LET <var>[(array index/key)] = <value>
+
+This command is actually redundant as its not required to assign to a variable.
+eg: 
+
+LET a = 1,b = "hello"
+
+is identical to:
+
+a = 1,b = "hello"
+
+All assignment follows an equals sign. If a value is assigned to an array but
+no index is given then the entire array is initialised to this value. eg:
+
+DIM b(10)
+b = "hello"
+DUMP b
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CLEAR [<var>[,<var> * N]]
+
+This deletes all variables and clears volatile system variables, eg $syserror
+unless you give it a specific list of one or more variables in which case
+it will just delete them. eg:
+
+CLEAR a,b
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+DELKEY <map var>,<key>
+
+This deletes a key-value pair from a map variable. If the key does not exist
+an error occurs. Use the haskey() function first to see if it does. eg:
+
+DIM m#
+m("one") = 1
+m("two") = "deux"
+DELKEY m,"two"
+
+
+Data
+===============================================================================
+DATA <value>[,<value> * N]
+
+This is a storage location command for numeric and string data that will be
+read by the READ command. Pieces of data are seperated by commas. eg:
+
+10 DATA 1,"hello",2,"world"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+READ <var>[,<var> * N]
+
+This reads the current piece of data and increments the position for the next
+read. Using the data above eg:
+
+READ a,b
+
+If READ tries to read off the end of the data, ie if a non DATA line or the end
+of the program is encounted an error will occur. An exception to this is if
+there are REM (or ') statements between DATA lines. In this case READ will skip
+them until it finds another DATA line to read. If it finds a non DATA line or
+the end of the program than an error will result. The HAVEDATA() function can
+be used to check for the end of data if AUTORESTORE is not used.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RESTORE <line>
+
+This (re)sets the position for the next READ to the first piece of data in
+the DATA line. If the line isn't a DATA command an error will occur. eg:
+
+20 RESTORE 10
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+AUTORESTORE <line>
+
+As above except when READ hits the end of the data the next read position is
+automatically reset to the start of the data in the given line. An alternative
+to using this command is to use the HAVEDATA() function to check for the
+end of data.
+
+
+Flow control
+==============================================================================
+BREAK
+
+When used on its own this will break out of the current loop. eg:
+
+   10 FOR i = 1 TO 20
+   20     IF i = 3 THEN : BREAK : FI 
+   30     PRINT i
+   40 NEXT 
+   50 PRINT "Done"
+
+This is equivalent to writing:
+
+   20     IF i = 3 THEN : GOTO 50 : FI 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CONT
+
+When used on its own this will continue the program after the last STOP. eg:
+
+] list
+   10 STOP 
+   20 PRINT "Next line"
+] run
+*** STOP in line 10 ***
+] cont
+Next line
+
+It cannot be used this way from within a program.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CONTLOOP
+
+To avoid the confusion of having two meanings of CONT depending on context the
+CONTLOOP command exists to continue within loops. eg:
+
+   10 FOR j = 1 TO 2
+   20     FOR i = 1 TO 10
+   30         IF i = 3 OR i = 6 THEN : CONTLOOP : FI 
+   40         PRINT i
+   50     NEXT 
+   60     PRINT "---"
+   70 NEXT 
+
+This is equivalent to writing:
+
+   30         IF i = 3 OR i = 6 THEN : GOTO 50: FI 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+IF <expression> THEN
+	<commands>
+ELSE
+	<commands>
+FI/FIALL
+
+An expression can be numeric or string. If numeric then anything non zero
+is considered true, if string then anything other than the empty string is
+considered true. FIALL terminates a whole block of IFs without having to write
+the equivalent number of FIs. eg:
+
+IF a = b OR c = d * 2 THEN
+	IF a = c THEN
+		:
+	ELSE
+		:
+FIALL
+
+Variables can be tested on their own. Any numeric variable that is non zero
+or any string variable that is not an empty string evaluates to true, else
+false. eg:
+
+a = ""
+IF a THEN PRINT "YES" ELSE PRINT "NO" 
+
+Also note that if the IF statement is a direct command, ie not in a program,
+then the FI is not required.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+GOTO <line number or expression>
+
+This causes execution of the program to jump to the given line number. eg:
+
+10 PRINT "hello"
+20 GOTO 2*5
+
+Note that RENUMber only works if the goto line is not part of an expression.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+GOSUB <line number or expression> - RETURN
+
+As per GOTO exception that the line number we jump from is stored on a stack
+and the runline immediately following it can be jumped back to using RETURN.
+eg:
+
+   10 PRINT "Start"
+   20 GOSUB 100: PRINT "Returned from gosub"
+   30 STOP 
+  100 PRINT "In subroutine"
+  110 RETURN 
+
+
+Loops
+==============================================================================
+FOR <var> = <start value> TO <end value> [STEP <stepping>]
+:
+NEXT
+
+This takes the variable <var> through all the values from the start to the
+end value inclusive stepping by 1 unless an optional stepping value is given.
+The variable must be dimensioned before it can be used here.
+eg:
+
+DIM i
+FOR i = 1 to 10 step 0.5: PRINT i: NEXT 
+
+Unlike a lot of versions of BASIC the variable name does not need to follow
+NEXT. Also NEXT can only be used once for any FOR block.
+
+Note:
+ - For stepping values that do not divide exactly into the range given, the 
+   final value of the variable will not be the range end value but will be
+   the closest possible value to the end value the stepping allows.
+ - If the stepping value direction does not match the range direction then
+   the loop will not be executed however the variable will be set to the
+   initial value.
+ - If the start and end range values are the same the loop will be executed
+   once.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+FOREACH <key var>,<value var> IN <map var>
+:
+NEXTEACH
+
+This iterates through a map setting the key variable to be the key and
+the value variable to be the value of a key-value pair stored in the map.
+
+eg:
+
+  DIM k,v,m#
+  m("hello") = "world"
+  m("wibble") = "wobble"
+  FOREACH k,v in m: PRINT "key = ",k,", value = ",v: NEXTEACH
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LOOP <count>
+:
+LEND
+
+This is the simplest type of loop - it simply loops the required number of
+times then exits. If the count value is negative it will loop forever. eg:
+
+  LOOP 3: print "hello": LEND
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+REPEAT
+:
+UNTIL <expression>
+
+This construct loops until the expression is true. Ie non zero numeric or
+non empty string. The commands inside this loop are always executed at least
+once since the test is at the end. eg:
+
+  DIM i
+  REPEAT: PRINT i: i = i + 1: UNTIL i = 10
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+WHILE <expression>
+:
+WEND
+
+Similar to the above construct, this loops while the expression is true. If
+the expression is false at the start the commands inside the loop will never
+be executed. eg:
+
+DIM i:
+WHILE i < 10: print i: i = i + 1: WEND
+
+
+
+Multiple choice block
+===============================================================================
+CHOOSE <expression>
+CASE <value>
+	<commands>
+	[BREAK]
+CASE <value>
+:
+:
+DEFAULT
+	<commands>
+	[BREAK]
+CHOSEN
+
+This is similar to C's switch() statement except the expression and case 
+values can be strings as well as numeric. When the CHOOSE is executed the
+interpreter then jumps to whichever CASE statement matches the result of
+the expression. If there is no match it jumps to DEFAULT and if there is no
+DEFAULT then it simply jumps to the line following CHOSEN. The BREAK command
+can be used to make execution to jump after CHOSEN. If BREAK or GOTO is not
+used then execution falls through to the next CASE and so on. eg:
+
+   10 CHOOSE "hello"
+   20     CASE 123: PRINT "A number": BREAK
+   30     CASE "hello": PRINT "Hello there!": BREAK
+   40     DEFAULT : PRINT "Nothing matches"
+   50 CHOSEN 
+   60 PRINT "done"
+
+
+
+Streams and I/O
+===============================================================================
+DIR  [<directory path>]
+DIRL [<directory path>]
+
+These commands both list the given directory or the current directory if none
+is given. Wildcards are supported. DIRL shows where symbolic links point to 
+whereas DIR simply appends them with '@' (as per ls -F). I named it DIRL and 
+not LDIR like LLIST because it does not output to a line printer. eg:
+
+   DIR "../ex*"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CINPUT [#<stream>],<var>[,<timeout in seconds>]
+
+This reads one character of input from stdin or a stream if given. If a timeout
+is given it will wait for that length of time until returning if no character
+is entered. If no timeout is given it will just wait until a key is pressed.
+
+eg:
+
+  DIM a,fd = open("/etc/passwd","r")
+  CINPUT #fd,a
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CLEARMODS
+
+Clears all the keyboard modifiers.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CLOSE <stream>[,<stream> * N]
+
+Close the stream(s). This is a command not a function since we don't care
+about any return values.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CLOSEDIR <dir stream>[,<dir stream> * N]
+
+Same as CLOSE except for directory streams.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+DEFMOD ["<key>","<string>"]
+
+This defines a keyboard modifier which means when you press the given key
+the string will be printed in its place. The key can either be an ascii 
+character or it can be F<1-5> for the F1 to F5 function keys. If the command
+is used on its own it prints the current modifications. See programs/defmod.bas
+
+eg:
+   DEFMOD "F1","run"
+   DEFMOD "F2","print"
+   DEFMOD "#","@"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+INPUT [#<stream>],<var>
+
+This inputs an entire line from stdin or a stream - \n is the terminator. eg:
+
+   10 DIM name
+   20 PRINT "What is your name> ";
+   30 INPUT name
+   40 PRINT "Your name is ",name
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+PDIR  [<directory path>]
+PDIRL [<directory path>]
+
+The sames as DIR/DIRL except it will page directory listings that don't fit
+into the terminal screen.
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+PRINT [<expression>, * N][;]
+
+This prints the result of the given expression whether its a simple number or
+string or a complex expression or the result of a function. By default a
+newline is added on the end but this can be suppressed by the use of a semi
+colon. A question mark can be used as a shortcut. eg:
+
+  PRINT "Hello ";: print "world " * 3
+  ? "hello":? "world"
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RM <file>[,<file> * N]
+
+These removes (deletes) BASIC file(s) from the filesystem. The .bas extension
+is added to any filename you give. Wildcards are supported. This command is 
+intended to be used at the command line rather than in a program. If you want 
+to remove any file on the system in your program then use the REMOVE() function.
+
+eg:
+
+  RM "t*","y*"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+Graphics/screen
+===============================================================================
+
+ATTR <non negative integer>
+
+This sets the terminal graphic rendition attribute number. This can include 
+blinking, italics etc. This page explains in more detail:
+
+https://en.wikipedia.org/wiki/ANSI_escape_code
+
+What is actually sent to the terminal is \033[<integer>. ATTR 0 will reset
+the terminal.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CIRCLE <centre x>,<centre y>,<radius>,<fill 0/1>[,<draw string>]
+
+This draws a circle in the terminal window using spaces in the PAPER colour
+or the draw string if given. If fill is 0 then only an outline is drawn else 
+the circle is filled. Note that drawing a circle using terminal characters is
+not an exact science so the actual radius of the circle may vary slightly
+from the requested amount.
+
+eg:
+
+CLS
+PAPER 4
+CIRCLE 20,20,10,1,"Hello"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CLS
+
+Clear the screen/window.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CURSOR <cursor command>[,<count>]
+
+This command allows various actions to be carried out by or on the cursor so
+long as the action is supported by the terminal. The commands available are:
+
+  ON   - Switch the cursor on
+  OFF  - Switch the cursor off
+  UP   - Move cursor up one line.
+  DOWN - Move cursor down one line
+  FWD  - Move cursor forward one character
+  BACK - Move cursor back one character
+  SAVE - Save current cursor position
+  RSTR - Restore saved cursor position
+
+Note that the cursor command must be in quotes. eg:
+
+CURSOR "off"
+
+The count option is used for UP, DOWN, FWD and BACK and tells BASIC how far
+you with the cursor to move. eg:
+
+CURSOR "up",10
+
+You can add count to the other options but it will have no effect.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LINE <from x>,<from y>,<to x>,<to y>[,<draw string>]
+
+Draw a line using the optional string. If the string is not given then spaces
+are used and are drawn in the background PAPER colour. eg:
+
+CLS
+PAPER 4
+PEN 6
+LINE 1,1,20,20,"X"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LOCATE <x>,<y>
+
+Move the cursor to the given position. eg:
+
+   10 CLS 
+   20 DIM i
+   30 FOR i = 1 TO 10
+   40     LOCATE i*2,i: PRINT "X"
+   50 NEXT 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+PAPER <0-7> or <0-255>,<0-255>,<0-255>
+
+This has 2 modes. If you give it a single number it will set the background
+colour to one of the standard 8 ANSI terminal colours as follows:
+
+  0 - Black
+  1 - Red
+  2 - Green
+  3 - Yellow
+  4 - Blue
+  5 - Magenta
+  6 - Turquoise
+  7 - White
+
+eg:
+
+   10 ATTR 0: CLS 
+   20 DIM i
+   30 FOR i = 0 TO 7: PAPER i: PRINT i,"  ";: NEXT 
+   40 ATTR 0
+   50 PRINT 
+
+If you give it 3 numbers it will treat these as a 24 bit RGB value. However
+this is supported by almost no terminals thought the MacOS terminal will snap
+the value to the nearest it can display. The Linux xterm however ignores it
+completely.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+PEN <0-7> or <0-255>,<0-255>,<0-255>
+
+This works in the same way as the PAPER command except for the foreground
+colour - ie the text colour. eg:
+
+   10 ATTR 0: CLS 
+   20 DIM i
+   30 FOR i = 0 TO 7: PEN i: PRINT i;: NEXT 
+   40 ATTR 0
+   50 PRINT 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+PLOT <x>,<y>[,<draw string>]
+
+This moves the cursor to the given location and writes either a space or
+the draw string if given. eg:
+
+PLOT 10,20,"X"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RECT <top left x>,<top left y>,<width>,<height>,<fill 0/1>[,<draw string>]
+
+Draw a rectangle using the optional draw string (or spaces if non given)
+starting at the top left. If the fill option is given then the rectangle is
+filled in otherwise its an outline. eg:
+
+RECT 2,2,20,10,1,"X"
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SCROLL <line count (can be neg)>
+
+This is supposed to cause the whole screen to scroll up or down by the given 
+number of lines, however it generally seems to simply move the cursor position.
+A positive value is scrolling down, a negative value is scrolling up. eg:
+
+CLS
+SCROLL 30: PRINT "hello": SCROLL -20: PRINT "world"
+
+
+
+Expressions
+===============================================================================
+DEFEXP <expr name> = <expression>
+
+This allows you to set up an expression that can be used on its own or inside 
+other expressions. Note that it is not a function and therefore does not have 
+any parameters. A user defined expression is called by placing '!' in front
+of its name. eg:
+
+   10 DIM ang
+   20 DEFEXP height = 10 * sin(ang)
+   30 FOR ang = 0 TO 90 STEP 10
+   40     PRINT "Height at ",ang," degs = ",!height
+   50 NEXT 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+EVAL <expression>[,<expression> * N]
+
+If you wish to execute a function or expression but don't care about the result
+and so don't want to have to define some dummy variable to capture it, simply 
+used this command. eg:
+
+  EVAL system("ls")
+  EVAL waitpid(-1)
+
+
+Maths
+===============================================================================
+DEG
+
+Switches the trigometric functions into degrees modes. This is the default at
+startup. The current mode can be seen in the $angle_type system variable. eg:
+
+DEG: print sin(90): RAD: print sin(90)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RAD
+
+Switches the trigometric functions into radians mode.
+
+
+
+Error handling
+===============================================================================
+ON ERROR GOTO <line>/GOSUB <line>/CONT/BREAK
+
+This command construct allows you to set the behaviour when a BASIC error
+occurs (note - not a unix error in a function). If you use the GOTO/GOSUB
+option then the program will jump to the given line. When a RETURN is called
+from the GOSUB it will jump to the command immediately following the error.
+If CONT is used then the program will ignore any errors and just continue.
+To reset back to default behaviour use "ON ERROR BREAK". eg:
+
+   10 ON ERROR GOSUB 100
+   20 PRINT a: PRINT "There is no variable 'a'"
+   30 STOP 
+  100 PRINT "Error  = ",error$($error)," (",$error,")"
+  110 RETURN 
+
+
+Processes
+===============================================================================
+KILLALL
+
+This will send SIGKILL to all child processes as shown in the $processes
+system array.
+
+
+Miscellanious
+===============================================================================
+ON BREAK GOTO <line>/GOSUB <line>/CONT/BREAK/CLEAR
+
+This works in the same way as ON ERROR except it sets the behaviour for when
+Control-C is pressed in an attempt to interrupt the program. Be careful using
+this as you can make a program unkillable except by killing the interpreter
+itself. eg:
+
+   10 ON BREAK GOSUB 90
+   20 DIM i
+   30 PRINT "Sleeping..."
+   40 FOR i = 1 TO 10
+   50     PRINT i
+   60     SLEEP 1
+   70 NEXT 
+   80 STOP 
+   90 PRINT "You can't kill me!"
+  100 RETURN 
+
+GOTO : The program will jump to the given line. RETURN cannot be used. This
+       resets any GOSUB or CONT settings.
+GOSUB: The program will jump to the given subroutine. RETURN can be used. This
+       resets any GOTO or CONT settings.
+CONT : This prevents the program terminating. It resets any GOTO/GOSUB jump
+       settings.
+CLEAR: This deletes all user variables which can be useful if you don't wish
+       values to be seen upon termination or wish a FOR loop to restart. It 
+       works in conjunction with other ON BREAK options.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+DUMP/DUMPC  [<var/exp pattern>[,<var/exp pattern> * N]]
+
+If used on its own these commands dumps the names and values of all variables
+and defined expressions (DEFEXP) the interpreter currently holds. If specific
+names or patterns are given then it dumps the given variables or expressions
+that match. If DUMPC is used then array and map contents of variables are 
+dumped too. To dump a DEFEXP you must prepend the name with '!' unless you
+use a wildcard pattern. Note that wildcard patterns must be enclosed in
+quotes.
+
+  DUMP $version,$build_date
+  DUMP "$*"
+  DUMP "$t*","*a*"
+  DUMPC $env
+  DEFEXP abc = x*2
+  DUMP !abc
+  DUMP "!*"
+  DUMP "*a*"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+HELP [<wildcard match>]
+
+Shows all the available command and function names or the ones which match
+the optional wildcard. eg:
+
+   HELP "A*"
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+HISTORY 
+HISTORY <line>
+HISTORY <from line> TO <to line>/END
+HISTORY TO <line>
+HISTORY TO END 
+
+Shows your command history. The default number of stored commands is 100 but
+can be altered with the -h command line option. A command can be recalled using
+!<number>. The from and to are which history lines to list.
+
+eg:
+   HISTORY          - Show the whole history.
+   HISTORY 3        - Show history line 3.
+   HISTORY 3 TO 7   - Show the history lines from 3 to 7 inclusive.
+   HISTORY 3 TO END - Show the whole history from history line 3 onwards.
+   HISTORY TO 3     - Show all lines up to 3 inclusive.
+   HISTORY TO END   - Same as HISTORY.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SEED <number>
+
+Set the random number seed. eg:
+
+SEED time()
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SLEEP <seconds>
+
+Sleep for the given number of seconds which can have a fractional value. eg:
+
+SLEEP 0.5
+
+

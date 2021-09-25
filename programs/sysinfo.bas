@@ -1,0 +1,5 @@
+   10 PRINT "CPU     : " + sysinfo$("cpu")
+   20 PRINT "OS      : " + sysinfo$("os")
+   30 PRINT "Release : " + sysinfo$("release")
+   40 PRINT "Version : " + sysinfo$("version")
+   50 PRINT "Hostname: " + sysinfo$("hostname")

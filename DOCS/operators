@@ -1,0 +1,164 @@
+                              BASIC Operators
+                              ===============
+
+This document lists the mathematical, bitwise and logical operators that
+BASIC supports in expressions.
+
+Logical
+===============================================================================
+NOT <number>
+   This inverts a number. Non-zero becomes zero, zero becomes one. eg:
+
+   PRINT NOT (10 - 10)
+   PRINT NOT 2
+
+Note the brackets around the first expression due to NOT having a high
+precedence.
+
+-------------------------------------------------------------------------------
+<number or string> AND <number or string>
+
+Expression can be numeric or string. True is non zero numeric or a non empty 
+string and ergo false is zero or an empty string. eg:
+
+   PRINT 1 AND "hello"
+   PRINT "hello" AND (10 / 5)
+   PRINT "X" AND ""
+   PRINT 1 AND 1
+
+Note that this operator does lazy evaluation which means if the left hand side
+evaluates to false then the rest of the expression is skipped. eg:
+
+   IF 0 AND blah THEN PRINT "y" fi
+
+won't fail with an error of undefined variable for blah (assuming its not
+defined) because "blah" never gets evaluated. This is useful for array value
+checking. eg:
+
+   IF index <= max_index AND myarr(index) = 123 THEN ...
+   
+-------------------------------------------------------------------------------
+<number or string> OR <number or string>
+
+Same as AND except it computes the logical OR. eg:
+
+   PRINT 1 OR 0
+   PRINT "" OR "X"
+
+-------------------------------------------------------------------------------
+<number or string> XOR <number or string>
+
+As above except computers logical XOR. eg:
+
+   PRINT 1 XOR 0
+   PRINT 1 XOR 1
+   PRINT "hello" XOR "world"
+
+-------------------------------------------------------------------------------
+
+Bitwise
+===============================================================================
+<number> & <number>
+
+Returns the bitwise AND of the 64/32 bit (depending on the CPU) integer 
+portions of results of the numberic expressions. eg:
+
+   PRINT 5 & 3
+
+-------------------------------------------------------------------------------
+<number> | <number>
+
+Bitwise OR. eg:
+
+   PRINT 5 | 3
+
+-------------------------------------------------------------------------------
+<number> ^ <number>
+
+Bitwise XOR. eg:
+
+   PRINT 5 ^ 3
+
+-------------------------------------------------------------------------------
+~ <number>
+
+Returns the bitwise NOT (ones complement) of the 64/32 bit integer portion of 
+the result of the number. eg:
+
+   PRINT hex$(~0)
+   PRINT ~0xFFFFFFFF
+   
+-------------------------------------------------------------------------------
+<number to shift> << <bits to shift by>
+<number to shift> >> <bits to shift by>
+
+These are the bit shift operators. Note that they do not wrap the bits.
+
+  PRINT 1 << 8
+  PRINT 0xFF >> 6
+
+-------------------------------------------------------------------------------
+
+Mathematical
+===============================================================================
+<number or string> * <number or string>
+
+Multiply as well as ordinary multiplcation can multiply strings by a number for
+padding purposes. Note that it cannot multiply a string by a string. eg:
+
+   PRINT 2 * 3
+   PRINT "hello " * 2
+   PRINT 2 * "hello "
+
+-------------------------------------------------------------------------------
+<number or string> + <number or string>
+
+Addition can add 2 numbers or concatenate 2 strings. It cannot however add
+a number to a string without converstion first. eg:
+
+   PRINT 2 + 2
+   PRINT "hello " + "world"
+   PRINT "count " + tostr$(123)
+
+-------------------------------------------------------------------------------
+<number or string> - <number or string>
+
+Subtract can subtract 2 numbers or subtract ALL occurences of one string from 
+another. It cannot subtract a number from a string or vice verca without
+conversion. eg:
+
+   PRINT 10 - 2
+   PRINT "hello" - "l"
+   PRINT "hello abc world abc abc" - "abc"
+
+-------------------------------------------------------------------------------
+<number> / <divisor>
+
+Standard division. eg:
+
+   PRINT 10 / 3
+
+-------------------------------------------------------------------------------
+<number> \ <divisor>
+
+Integer division. Any floating point part of the inputs and the result are 
+discarded.
+
+   PRINT 10 \ 3
+   PRINT 10.9 \ 2.9
+
+-------------------------------------------------------------------------------
+<number or string> =  <number or string>
+<number or string> <> <number or string>
+<number or string> >= <number or string>
+<number or string> <= <number or string>
+<number or string> <  <number or string>
+<number or string> >  <number or string>
+
+Comparison operators. They all work with either numbers or strings but cannot
+compare a number with a string. String comparisons are done in alphabetic 
+order. eg:
+
+   PRINT "z" > "a"
+   PRINT "aa" > "a"
+

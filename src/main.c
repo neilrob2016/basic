@@ -145,17 +145,18 @@ void parseCmdLine(int argc, char **argv)
 
 	USAGE:
 	printf("Usage: %s\n"
-	       "      [-p <.bas file>] : BASIC program file\n"
-	       "      [-h <lines>]     : Number of history lines. Default = %d\n"
-	       "      [-r <run arg>]   : Sets _run_arg system variable\n"
-	       "      [-a]             : Autorun program\n"
-	       "      [-s]             : Enforce strict mode which means normal variables must\n"
-	       "                         be declared with DIM before use.\n"
-	       "      [-k]             : Use 1024 bytes to calculate kilobytes in DIR* output\n"
-	       "                         instead of the default 1000.\n"
-	       "      [-v]             : Print version and build information then exit\n"
-	       "      [--]             : Everything following this gets passed to BASIC as\n"
-	       "                         _argv with _argc system variables set\n",
+	       "       -p <.bas file> : BASIC program file.\n"
+	       "       -h <lines>     : Number of history lines. Default = %d\n"
+	       "       -r <run arg>   : Sets _run_arg system variable.\n"
+	       "       -a             : Autorun program.\n"
+	       "       -s             : Enforce strict mode which means normal variables must\n"
+	       "                        be declared with DIM before use.\n"
+	       "       -k             : Use 1024 bytes to calculate kilobytes in DIR* output\n"
+	       "                        instead of the default 1000.\n"
+	       "       -v             : Print version and build information then exit.\n"
+	       "       --             : Everything following this gets passed to BASIC as\n"
+	       "                        _argv with _argc system variables set.\n"
+	       "Note: All parameters are optional.\n",
 		argv[0],NUM_KEYB_LINES);
 	exit(1);
 }

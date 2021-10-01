@@ -69,8 +69,7 @@ void createSystemVariables(int argc, char **argv, char **env)
 	setValue(var->value,VAL_NUM,NULL,NUM_ERRORS);
 
 	run_arg_var = createVariable("$run_arg",VAR_STD,0,NULL);
-	if (cmdline_run_arg)
-		setValue(run_arg_var->value,VAL_STR,cmdline_run_arg,0);
+	setValue(run_arg_var->value,VAL_STR,cmdline_run_arg,0);
 
 	indent_var = createVariable("$indent",VAR_STD,0,NULL);
 	setValue(indent_var->value,VAL_NUM,NULL,indent_spaces);
@@ -159,6 +158,7 @@ void resetSystemVariables()
 	setValue(error_var->value,VAL_NUM,NULL,0);
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
 	setValue(angle_mode_var->value,VAL_STR,angle_in_degrees ? "DEG" : "RAD",0);
+	setValue(run_arg_var->value,VAL_STR,NULL,0);
 	createProcessArray();
 }
 

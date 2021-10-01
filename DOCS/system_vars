@@ -18,7 +18,9 @@ $argv         : Array of words given as command line arguments. Also does not
 $env          : Array of the enviroment variables
 $num_errors   : Number of BASIC errors. 
 $run_arg      : Argument passed to a program by RUN, CHAIN or on the command 
-                line using the -r option.
+                line using the -r option. If not set then its an empty string.
+                If the argument is a number then $run_arg will be a number type.
+	        so if you want a number string use quotes. Eg: RUN "123"
 $indent       : Number of spaces LIST uses to indent program blocks.
 $pid          : Process ID of the interpreter
 $ppid         : Parent process ID of the interpreter

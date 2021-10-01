@@ -2199,8 +2199,9 @@ int funcSysInfoStr(int func, st_var **var, st_value *vallist, st_value *result)
 }
 
 
-/****************************** MISCELLANIOUS ******************************/
+/****************************** RANDOM NUMBERS ******************************/
 
+/*** Return a floating from 0 to 1 ***/
 int funcRand(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	setValue(result,VAL_NUM,NULL,(double)random() / RAND_MAX);
@@ -2209,6 +2210,18 @@ int funcRand(int func, st_var **var, st_value *vallist, st_value *result)
 
 
 
+
+/*** Return an integer from 0 to maxval inclusive ***/
+int funcRandom(int func, st_var **var, st_value *vallist, st_value *result)
+{
+	long maxval;
+	if ((maxval = (long)vallist[0].dval) < 1) return ERR_INVALID_ARG;
+	setValue(result,VAL_NUM,NULL,random() % (maxval + 1));
+	return OK;
+}
+
+
+/****************************** MISCELLANIOUS ******************************/
 
 /*** First argument is string to encrypt, 2nd is salt, 3rd is encryption
      type. MacOS only supports DES for this function ***/

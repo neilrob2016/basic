@@ -20,11 +20,18 @@ void        clearToken(st_token *token);
 
 /*****************************************************************************/
 
+#define CHECK_TOKEN() \
+	in_rem = (IS_COM_TYPE(token,COM_REM)); \
+	runline = checkSOLCommand(progline,runline,token); \
+	runline = checkEOLCommand(progline,runline,token);
+
+
 /*** Split up the line into tokens ***/
 st_progline *tokenise(char *line)
 {
 	st_progline *progline;
 	st_runline *runline;
+	st_runline *prev_runline;
 	st_token *token;
 	bool in_quotes;
 	bool in_rem;
@@ -63,9 +70,7 @@ st_progline *tokenise(char *line)
 			{
 				if ((err = setTokenType(token)) != OK)
 					goto ERROR;
-				in_rem = (IS_COM_TYPE(token,COM_REM));
-				runline = checkSOLCommand(progline,runline,token);
-				runline = checkEOLCommand(progline,runline,token);
+				CHECK_TOKEN();
 				token = createToken(runline);
 			}
 			token->quoted = TRUE;
@@ -84,16 +89,22 @@ st_progline *tokenise(char *line)
 			}
 			if (runline->num_tokens)
 			{
+				prev_runline = runline;
 				if (token->str)
 				{
 					if ((err = setTokenType(token)) != OK)
 						goto ERROR;
-					in_rem = (IS_COM_TYPE(token,COM_REM));
+					CHECK_TOKEN();
 				}
 				else deleteEndToken(runline);
 
-				addRunLineToProgLine(progline,runline);
-				runline = createRunLine(progline);
+				/* If the checkS*() functions didn't create
+				   a new runline then do it here */
+				if (!token->str || prev_runline == runline)
+				{
+					addRunLineToProgLine(progline,runline);
+					runline = createRunLine(progline);
+				}
 				token = createToken(runline);
 			}
 			break;
@@ -109,9 +120,7 @@ st_progline *tokenise(char *line)
 			{
 				if ((err = setTokenType(token)) != OK)
 					goto ERROR;
-				in_rem = (IS_COM_TYPE(token,COM_REM));
-				runline = checkSOLCommand(progline,runline,token);
-				runline = checkEOLCommand(progline,runline,token);
+				CHECK_TOKEN();
 				token = createToken(runline);
 			}
 			token->type = TOK_COM;
@@ -131,9 +140,7 @@ st_progline *tokenise(char *line)
 				{
 					if ((err = setTokenType(token)) != OK)
 						 goto ERROR;
-					in_rem = (IS_COM_TYPE(token,COM_REM));
-					runline = checkSOLCommand(progline,runline,token);
-					runline = checkEOLCommand(progline,runline,token);
+					CHECK_TOKEN();
 					token = createToken(runline);
 				}
 				break;
@@ -148,9 +155,7 @@ st_progline *tokenise(char *line)
 				{
 					if ((err = setTokenType(token)) != OK)
 						 goto ERROR;
-					in_rem = (IS_COM_TYPE(token,COM_REM));
-					runline = checkSOLCommand(progline,runline,token);
-					runline = checkEOLCommand(progline,runline,token);
+					CHECK_TOKEN();
 					token = createToken(runline);
 				}
 				addCharToToken(token,*s);

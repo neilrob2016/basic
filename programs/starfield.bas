@@ -18,8 +18,8 @@
   180     GOSUB 420
   190 NEXT 
   200 ' 
-  210 WHILE 1
-  220     CURSOR "off"
+  210 CURSOR "off"
+  220 WHILE 1
   230     ATTR 0: PAPER 0: CLS 
   240     ' Draw the circles  
   250     FOR i = 1 TO NUM_STARS
@@ -39,8 +39,8 @@
   390 WEND 
   400 ' 
   410 ' Set up a star 
-  420 x(i) = $term_cols / 4 + rand() * $term_cols / 2
-  430 y(i) = $term_rows / 4 + rand() * $term_rows / 2
+  420 x(i) = $term_cols / 4 + random($term_cols / 2)
+  430 y(i) = $term_rows / 4 + random($term_rows / 2)
   440 IF x(i) < $term_cols / 2 THEN 
   450     xadd(i) = -0.1
   460 ELSE 
@@ -53,7 +53,7 @@
   530 FI 
   540 radius(i) = 1
   550 radius_inc(i) = rand() / 2 + 0.01
-  560 colour(i) = floor(rand() * 7) + 1
+  560 colour(i) = random(6) + 1
   570 RETURN 
   580 ' 
   590 ATTR 0: LOCATE 1,1: CURSOR "on"

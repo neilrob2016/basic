@@ -196,7 +196,7 @@ This prints the network address resolver error. eg:
 
    eval host2ip$("blahblah")
    print "Error = ",reserror$($reserror)
-   eval ip2host("0.0.0.0")
+   eval ip2host$("0.0.0.0")
    print "Error = ",reserror$($reserror)
    
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -827,7 +827,7 @@ and no DNS entry then an empty string is returned and $reserror is set. If the
 IP number has an invalid format then an invalid argument error occurs. If 
 the number is valid but can't be resolved then $reserror is set. eg:
 
-   PRINT ip2host("127.0.0.1")
+   PRINT ip2host$("127.0.0.1")
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ACCEPT(<listening socket stream>)
@@ -913,13 +913,24 @@ eg:
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-Miscellanious
+Random numbers
 ===============================================================================
 RAND()
 
 This returns a random floating point number from 0 to 1 inclusive.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RANDOM(<max value>)
+
+This returns a random value from 0 to maxval inclusive. Max value must be
+greater >= 1.
+
+eg: PRINT RANDOM(10)
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Miscellanious
+===============================================================================
 CRYPT(<string>,<2 character salt>,<encryption type>)
 
 This encrypts the string using the given salt and encryption type using the

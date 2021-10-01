@@ -307,7 +307,14 @@ int doComRun(int comnum, st_runline *runline, int pc)
 	st_value result;
 	int err;
 
-	/* Get run argument if there is one */
+	deleteDefExps();
+	deleteVariables(runline);
+	resetSystemVariables();
+
+	/* This sets the new runline to the first in the program */
+	resetProgram();
+
+	/* Set $run_arg if an argument was passed */
 	if (runline->num_tokens > pc)
 	{
 		/* Pc > 1 if CHAIN command */
@@ -331,14 +338,6 @@ int doComRun(int comnum, st_runline *runline, int pc)
 		copyValue(run_arg_var->value,&result);
 		clearValue(&result);
 	}
-	else clearValue(run_arg_var->value);
-
-	deleteDefExps();
-	deleteVariables(runline);
-	resetSystemVariables();
-
-	/* This sets the new runline to the first in the program */
-	resetProgram();
 
 	return OK;
 }

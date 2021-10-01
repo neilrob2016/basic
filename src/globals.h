@@ -52,7 +52,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2021"
-#define VERSION     "1.6.0"
+#define VERSION     "1.6.1"
 
 #define STDIN  0
 #define STDOUT 1
@@ -1063,48 +1063,49 @@ enum
 	FUNC_RAND,
 
 	/* 70 */
+	FUNC_RANDOM,
 	FUNC_TIME,
 	FUNC_DATE,
 	FUNC_DATETOSECS,
 	FUNC_POPEN,
-	FUNC_FORK,
 
 	/* 75 */
+	FUNC_FORK,
 	FUNC_EXEC,
 	FUNC_WAITPID,
 	FUNC_CHECKPID,
 	FUNC_KILL,
-	FUNC_PIPE,
 
 	/* 80 */
+	FUNC_PIPE,
 	FUNC_CONNECT,
 	FUNC_LISTEN,
 	FUNC_ACCEPT,
 	FUNC_GETIP,
-	FUNC_IP2HOST,
 
 	/* 85 */
+	FUNC_IP2HOST,
 	FUNC_HOST2IP,
 	FUNC_GETUSERBYID,
 	FUNC_GETGROUPBYID,
 	FUNC_GETUSERBYNAME,
-	FUNC_GETGROUPBYNAME,
 
 	/* 90 */
+	FUNC_GETGROUPBYNAME,
 	FUNC_GETENV,
 	FUNC_SETENV,
 	FUNC_SYSTEM,
 	FUNC_SYSINFO,
-	FUNC_CRYPT,
 
 	/* 95 */
+	FUNC_CRYPT,
 	FUNC_LPAD,
 	FUNC_RPAD,
 	FUNC_NUMSTRBASE,
 	FUNC_PATH,
-	FUNC_HAVEDATA,
 
 	/* 100 */
+	FUNC_HAVEDATA,
 	FUNC_REGMATCH,
 
 	NUM_FUNCTIONS
@@ -1171,6 +1172,7 @@ DECL_FUNC(StatStr)
 DECL_FUNC(CanRW)
 DECL_FUNC(Select)
 DECL_FUNC(Rand)
+DECL_FUNC(Random)
 DECL_FUNC(Time)
 DECL_FUNC(DateStr)
 DECL_FUNC(DateToSecs)
@@ -1301,48 +1303,49 @@ st_func function[NUM_FUNCTIONS] =
 	{ "RAND",           0, { VAL_UNDEF }, funcRand },
 
 	/* 70 */
+	{ "RANDOM",         1, { VAL_NUM }, funcRandom },
 	{ "TIME",           0, { VAL_UNDEF }, funcTime },
 	{ "DATE$",          2, { VAL_NUM, VAL_STR }, funcDateStr },
 	{ "DATETOSECS",     2, { VAL_STR, VAL_STR }, funcDateToSecs },
 	{ "POPEN",          2, { VAL_STR, VAL_STR }, funcPopen },
-	{ "FORK",           0, { VAL_UNDEF }, funcFork },
 
 	/* 75 */
+	{ "FORK",           0, { VAL_UNDEF }, funcFork },
 	{ "EXEC",           2, { VAL_STR, VAL_UNDEF }, funcExec },
 	{ "WAITPID$",       1, { VAL_NUM }, funcWaitCheck },
 	{ "CHECKPID$",      1, { VAL_NUM }, funcWaitCheck },
 	{ "KILL",           2, { VAL_NUM, VAL_NUM }, funcKill },
-	{ "PIPE",           1, { VAL_UNDEF }, funcPipe },
 
 	/* 80 */
+	{ "PIPE",           1, { VAL_UNDEF }, funcPipe },
 	{ "CONNECT",        1, { VAL_STR }, funcConnect },
 	{ "LISTEN",         2, { VAL_NUM, VAL_NUM }, funcListen },
 	{ "ACCEPT",         1, { VAL_NUM }, funcAccept },
 	{ "GETIP$",         1, { VAL_NUM }, funcGetIPStr },
-	{ "IP2HOST$",       1, { VAL_STR }, funcIP2HostStr },
 
 	/* 85 */
+	{ "IP2HOST$",       1, { VAL_STR }, funcIP2HostStr },
 	{ "HOST2IP$",       1, { VAL_STR }, funcHost2IPStr },
 	{ "GETUSERBYID$",   1, { VAL_NUM }, funcGetUserStr },
 	{ "GETGROUPBYID$",  1, { VAL_NUM }, funcGetGroupStr },
 	{ "GETUSERBYNAME$", 1, { VAL_STR }, funcGetUserStr }, 
-	{ "GETGROUPBYNAME$",1, { VAL_STR }, funcGetGroupStr },
 
 	/* 90 */
+	{ "GETGROUPBYNAME$",1, { VAL_STR }, funcGetGroupStr },
 	{ "GETENV$",        1, { VAL_STR }, funcGetEnvStr },
 	{ "SETENV",         2, { VAL_STR, VAL_STR }, funcSetEnv },
 	{ "SYSTEM",         1, { VAL_STR }, funcSystem },
 	{ "SYSINFO$",       1, { VAL_STR }, funcSysInfoStr },
-	{ "CRYPT$",         3, { VAL_STR, VAL_STR, VAL_STR }, funcCryptStr },
 
 	/* 95 */
+	{ "CRYPT$",         3, { VAL_STR, VAL_STR, VAL_STR }, funcCryptStr },
 	{ "LPAD$",          3, { VAL_STR, VAL_STR, VAL_NUM }, funcPadStr },
 	{ "RPAD$",          3, { VAL_STR, VAL_STR, VAL_NUM }, funcPadStr },
 	{ "NUMSTRBASE",     1, { VAL_STR }, funcNumStrBase },
 	{ "PATH",           1, { VAL_STR }, funcPath },
-	{ "HAVEDATA",       0, { VAL_UNDEF }, funcHaveData },
 
 	/* 100 */
+	{ "HAVEDATA",       0, { VAL_UNDEF }, funcHaveData },
 	{ "REGMATCH",       2, { VAL_STR,VAL_STR }, funcRegMatch }
 };
 #else

@@ -7,9 +7,9 @@
    70 DIM radd,gadd,badd
    80 ' 
    90 SEED time()
-  100 r = rand() * 255
-  110 g = rand() * 255
-  120 b = rand() * 255
+  100 r = random(255)
+  110 g = random(255)
+  120 b = random(255)
   130 ' 
   140 ATTR 0: PAPER 0: CURSOR "off": CLS 
   150 ON BREAK GOTO 380
@@ -18,9 +18,9 @@
   180     FOR ang1 = 0 TO 360 - 36 STEP 36
   190         centre_x = 40 + 20 * sin(ang1)
   200         centre_y = 12 + 6 * cos(ang1)
-  210         radd = rand() * 10
-  220         gadd = rand() * 10
-  230         badd = rand() * 10
+  210         radd = random(10)
+  220         gadd = random(10)
+  230         bass = random(10)
   240         ' 
   250         FOR ang2 = 0 TO 360 STEP 10
   260             x = centre_x + 5 * sin(ang2)

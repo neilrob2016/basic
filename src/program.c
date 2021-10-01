@@ -31,6 +31,11 @@ void subInitProgram()
 		{
 			close(stream[i]);
 			stream[i] = 0;
+			if (popen_fp[i])
+			{
+				pclose(popen_fp[i]);
+				popen_fp[i] = NULL;
+			}
 		}
 	}
 	for(i=0;i < MAX_DIR_STREAMS;++i)
@@ -503,8 +508,11 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 		line_width += (INC); \
 		if (line_width + loop_indent + if_indent >= term_cols) \
 		{ \
-			fputc('\n',fp); \
-			spacePad(fp,9+loop_indent+if_indent); \
+			if (print_line) \
+			{ \
+				fputc('\n',fp); \
+				spacePad(fp,9+loop_indent+if_indent); \
+			} \
 			line_width = 9; \
 			++pause_linecnt; \
 		} \
@@ -522,6 +530,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 	st_token *next_token;
 	bool start;
 	bool in_rem;
+	bool print_line;
 	int if_indent;
 	int loop_indent;
 	int linecnt;
@@ -538,12 +547,13 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 	pause_linecnt = 0;
 
 	for(progline=prog_first_line;
-	    progline && last_signal != SIGINT;progline=progline->next)
+	    progline && (!to || progline->linenum <= to) && last_signal != SIGINT;
+	    progline=progline->next)
 	{
-		if (progline->linenum < from) continue;
-		if (to && progline->linenum > to) break;
+		/* Can't just continue else indentation fails */
+		print_line = (progline->linenum >= from);
 
-		if (pause)
+		if (print_line && pause)
 		{
  			if (pause_linecnt == term_rows - 3)
 			{
@@ -554,7 +564,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 		}
 
 		/* Print line number */
-		if (fprintf(fp,"%5u ",progline->linenum) == -1)
+		if (print_line && fprintf(fp,"%5u ",progline->linenum) == -1)
 			return ERR_WRITE;
 		line_width = 6;
 
@@ -583,7 +593,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 				break;
 			}
 		}
-		spacePad(fp,loop_indent + if_indent);
+		if (print_line) spacePad(fp,loop_indent + if_indent);
 
 		ret = 0;
 		print_colon = 0;
@@ -592,7 +602,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 		{
 			token = &runline->tokens[0];
 
-			if (print_colon)
+			if (print_line && print_colon)
 			{
 				/* If the 1st token is FI, FIALL or ELSE don't
 				   print the colon */
@@ -617,7 +627,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 				if (in_rem && i)
 				{
 					AUTOWRAP(token->len+1);
-					if (fputs(token->str,fp) == -1)
+					if (print_line && fputs(token->str,fp) == -1)
 						return ERR_WRITE;
 					/* REM only has 1 token for text */
 					break;
@@ -625,17 +635,19 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 				if (token->negative)
 				{
 					AUTOWRAP(1);
-					fputc('-',fp);
+					if (print_line) fputc('-',fp);
 				}
 
 				prev_tok_was_com = 0;
+				ret = 0;
 
 				switch(token->type)
 				{
 				case TOK_STR:
 					/* Add back quotes */
 					AUTOWRAP(token->len + 2);
-					ret = fprintf(fp,"\"%s\"",token->str);
+					if (print_line)
+						ret = fprintf(fp,"\"%s\"",token->str);
 					break;
 
 				case TOK_COM:
@@ -645,17 +657,19 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 					if (!start)
 					{
 						AUTOWRAP(1);
-						fputc(' ',fp);
+						if (print_line) fputc(' ',fp);
 					}
 					AUTOWRAP(token->len+1);
 
 					/* Don't put a trailing space if its a
 					   command */
-					if (next_token &&
-					    next_token->type == TOK_COM)
-						ret = fputs(token->str,fp);
-					else
-						ret = fprintf(fp,"%s ",token->str);
+					if (print_line)
+					{
+						if (next_token && next_token->type == TOK_COM)
+							ret = fputs(token->str,fp);
+						else
+							ret = fprintf(fp,"%s ",token->str);
+					}
 
 					/* See if we need to add or remove 
 					   indentation */
@@ -719,27 +733,32 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 					case OP_R_BRACKET:
 					case OP_BIT_COMPL:
 						AUTOWRAP(token->len);
-						ret = fprintf(fp,"%s",token->str);
+						if (print_line)
+							ret = fprintf(fp,"%s",token->str);
 						break;
 
 					case OP_NOT:
 						AUTOWRAP(token->len+1);
-						ret = fprintf(fp,"%s ",token->str);
+						if (print_line)
+							ret = fprintf(fp,"%s ",token->str);
 						break;
 
 					default:
 						AUTOWRAP(token->len+2);
-						ret = fprintf(fp," %s ",token->str);
+						if (print_line)
+							ret = fprintf(fp," %s ",token->str);
 					}
 					break;
 
 				default:
 					AUTOWRAP(token->len);
-					ret = fprintf(fp,"%s",token->str);
+					if (print_line)
+						ret = fprintf(fp,"%s",token->str);
 				}
 				start = FALSE;
 			}
-			if (ret == -1 || fflush(fp) == -1) return ERR_WRITE;
+			if (print_line && (ret == -1 || fflush(fp) == -1))
+				return ERR_WRITE;
 			if (runline == progline->last_runline) break;
 
 			AUTOWRAP(2);
@@ -748,10 +767,13 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 			   line continues, it looks neater without them. */
 			print_colon = !token || 
 			              (!IS_COM_TYPE(token,COM_THEN) && !IS_COM_TYPE(token,COM_ELSE));
-		}	
-		if (fp != stdout && !(++linecnt % PROGRESS_DOT_LINES))
-			PRINT(".",1);
-		fputc('\n',fp);
+		}
+		if (print_line)
+		{
+			if (fp != stdout && !(++linecnt % PROGRESS_DOT_LINES))
+				PRINT(".",1);
+			fputc('\n',fp);
+		}
 	}
 	return OK;
 }

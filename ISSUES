@@ -1,5 +1,0 @@
-BASIC doesn't do lazy evaluation with AND which means some checks may
-have to be split over 2 or more IF statements. Eg if checking array
-index is in bounds then checking array value.
-
-TRONS doesn't work well with ON BREAK ...

@@ -11,7 +11,7 @@ LIBS=-lm -lcrypt
 CC=cc $(LFA)
 LIBS=-lm 
 
-# ARM
+# Helvar 950 Router
 #CC=aarch64-poky-linux-gcc --sysroot=/opt/fsl-imx-wayland/4.19-warrior/sysroots/aarch64-poky-linux
 
 

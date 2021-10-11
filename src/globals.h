@@ -52,7 +52,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2021"
-#define VERSION     "1.6.1"
+#define VERSION     "1.7.0"
 
 #define STDIN  0
 #define STDOUT 1
@@ -348,111 +348,114 @@ enum
 	/* 10 */
 	ERR_VAR_READ_ONLY,
 	ERR_MAP_ARRAY,
-	ERR_INVALID_ASSIGNMENT,
 	ERR_INVALID_VAR_NAME,
 	ERR_VAR_INDEX_OOB,
+	ERR_VAR_MAX_INDEX,
 
 	/* 15 */
-	ERR_VAR_MAX_INDEX,
 	ERR_VAR_IS_NOT_MAP,
 	ERR_VAR_IS_MAP,
 	ERR_KEY_NOT_FOUND,
 	ERR_CANT_REDIM,
+	ERR_INVALID_NEG,
 
 	/* 20 */
-	ERR_INVALID_NEG,
 	ERR_INCOMPLETE_EXPR,
 	ERR_STACK_OVERFLOW,
 	ERR_DIVIDE_BY_ZERO,
 	ERR_MISSING_BRACKET,
+	ERR_MISSING_END_QUOTES,
 
 	/* 25 */
-	ERR_MISSING_END_QUOTES,
 	ERR_MAX_RECURSION,
 	ERR_OUT_OF_RANGE,
 	ERR_UNEXPECTED_RETURN,
 	ERR_UNEXPECTED_WEND,
+	ERR_UNEXPECTED_UNTIL,
 
 	/* 30 */
-	ERR_UNEXPECTED_UNTIL,
 	ERR_UNEXPECTED_ELSE,
 	ERR_UNEXPECTED_FI,
 	ERR_UNEXPECTED_NEXT,
 	ERR_UNEXPECTED_NEXTEACH,
+	ERR_UNEXPECTED_LEND,
 
 	/* 35 */
-	ERR_UNEXPECTED_LEND,
 	ERR_UNEXPECTED_READ,
 	ERR_MISSING_WEND,
 	ERR_MISSING_NEXT,
 	ERR_MISSING_NEXTEACH,
+	ERR_MISSING_UNTIL,
 
 	/* 40 */
-	ERR_MISSING_UNTIL,
 	ERR_MISSING_LEND,
 	ERR_MISSING_THEN,
 	ERR_MISSING_FI,
 	ERR_DATA_EXHAUSTED,
+	ERR_CANT_RESTORE,
 
 	/* 45 */
-	ERR_CANT_RESTORE,
 	ERR_CANT_OPEN_FILE,
 	ERR_CANT_OPEN_DIR,
 	ERR_READ,
 	ERR_WRITE,
+	ERR_SEEK,
 
 	/* 50 */
-	ERR_SEEK,
 	ERR_CANT_DEL_FILE,
 	ERR_NOTHING_TO_SAVE,
 	ERR_NO_SUCH_FILE,
 	ERR_FILENAME_TOO_LONG,
+	ERR_MAX_STREAMS,
 
 	/* 55 */
-	ERR_MAX_STREAMS,
 	ERR_MAX_DIR_STREAMS,
 	ERR_INVALID_STREAM,
 	ERR_STREAM_NOT_OPEN,
 	ERR_DIR_STREAM,
+	ERR_DIR_SEEK,
 
 	/* 60 */
-	ERR_DIR_SEEK,
 	ERR_DIR_CINPUT,
 	ERR_NOT_ALLOWED_IN_PROG,
 	ERR_CANT_MERGE,
 	ERR_SLEEP,
+	ERR_DUPLICATE_DEFEXP,
 
 	/* 65 */
-	ERR_DUPLICATE_DEFEXP,
 	ERR_UNDEFINED_DEFEXP,
 	ERR_INVALID_DEFEXP_NAME,
 	ERR_CANT_CONTINUE,
 	ERR_MISSING_CHOSEN,
+	ERR_UNEXPECTED_CHOSEN,
 
 	/* 70 */
-	ERR_UNEXPECTED_CHOSEN,
 	ERR_INVALID_ARRAY_TYPE,
 	ERR_VAR_NO_MEM_SIZE,
 	ERR_SHARMEM,
 	ERR_INVALID_HISTORY_LINE,
+	ERR_INVALID_PORT,
 
 	/* 75 */
-	ERR_INVALID_PORT,
 	ERR_SOCKET,
 	ERR_ENCRYPTION_NOT_SUPPORTED,
 	ERR_UNAVAILABLE,
 	ERR_VAR_ALREADY_WATCHED,
+	ERR_VAR_NOT_WATCHED,
 
 	/* 80 */
-	ERR_VAR_NOT_WATCHED,
 	ERR_OVERFLOW,
 	ERR_LINE_EXISTS,
 	ERR_REGEX,
 	ERR_ARR_SIZE,
+	ERR_UNEXPECTED_BREAK,
 
 	/* 85 */
-	ERR_UNEXPECTED_BREAK,
 	ERR_UNEXPECTED_CONTLOOP,
+	ERR_VAR_ALREADY_HAS_NAME,
+	ERR_DEFEXP_ALREADY_HAS_NAME,
+	ERR_RENAME_SAME,
+	ERR_RENAME_TYPE,
 
 	NUM_ERRORS
 };
@@ -478,111 +481,114 @@ char *error_str[NUM_ERRORS] =
 	/* 10 */
 	"Variable is read only",
 	"Map variables cannot be arrays",
-	"Invalid assignment",
 	"Invalid variable name",
 	"Array indexing invalid or out of bounds",
+	"Array indexing limit exceeded",
 
 	/* 15 */
-	"Array indexing limit exceeded",
 	"Variable is not a map",
 	"Variable is a map",
 	"Key not found",
 	"Cannot REDIM to smaller size",
+	"Invalid negative",
 
 	/* 20 */
-	"Invalid negative",
 	"Incomplete expression",
 	"Stack overflow",
 	"Divide by zero",
 	"Missing bracket(s)",
+	"Missing end quotes",
 
 	/* 25 */
-	"Missing end quotes",
 	"Recursion limit exceeded",
 	"Value out of range",
 	"Unexpected RETURN",
 	"Unexpected WEND",
+	"Unexpected UNTIL",
 
 	/* 30 */
-	"Unexpected UNTIL",
 	"Unexpected ELSE",
 	"Unexpected FI",
 	"Unexpected NEXT",
 	"Unexpected NEXTEACH",
+	"Unexpected LEND",
 
 	/* 35 */
-	"Unexpected LEND",
 	"Unexpected READ",
 	"Missing WEND",
 	"Missing NEXT",
 	"Missing NEXTEACH",
+	"Missing UNTIL",
 
 	/* 40 */
-	"Missing UNTIL",
 	"Missing LEND",
 	"Missing THEN",
 	"Missing FI",
 	"DATA exhausted",
+	"Cannot RESTORE to non DATA line",
 
 	/* 45 */
-	"Cannot RESTORE to non DATA line",
 	"Cannot open file",
 	"Cannot open directory",
 	"Read failure",
 	"Write failure",
+	"Seek failure",
 
 	/* 50 */
-	"Seek failure",
 	"Cannot delete file",
 	"No program to save",
 	"No such path or file",
 	"File/directory name too long",
+	"Maximum open streams",
 
 	/* 55 */
-	"Maximum open streams",
 	"Maximum open directory streams",
 	"Invalid stream",
 	"Stream not open",
 	"Directory streams are read only",
+	"Cannot seek in directory stream",
 
 	/* 60 */
-	"Cannot seek in directory stream",
 	"Cannot read a directory stream with CINPUT",
 	"Command not allowed in a program",
 	"Cannot merge due to line overwrite",
 	"Sleep failure",
+	"Duplicate DEFEXP",
 
 	/* 65 */
-	"Duplicate expression",
-	"Undefined expression",
-	"Invalid expression name",
+	"Undefined DEFEXP",
+	"Invalid DEFEXP name",
 	"Cannot CONTinue",
 	"Missing CHOSEN",
+	"Unexpected CHOSEN",
 
 	/* 70 */
-	"Unexpected CHOSEN",
 	"Invalid array type",
 	"No size given for shared memory variable",
 	"Shared memory error",
 	"Invalid history line",
+	"Invalid port number",
 
 	/* 75 */
-	"Invalid port number",
 	"Socket error",
 	"Encryption type not supported",
 	"Function unavailable in this build",
 	"Variable is already being watched",
+	"Variable is not being watched",
 
 	/* 80 */
-	"Variable is not being watched",
 	"Overflow",
 	"Line already exists",
 	"Invalid regular expression",
 	"Invalid array size",
+	"Unexpected BREAK",
 
 	/* 85 */
-	"Unexpected BREAK",
-	"Unexpected CONTLOOP"
+	"Unexpected CONTLOOP",
+	"A variable already has the same name",
+	"A DEFEXP already has the same name",
+	"RENAME requires arguments differ",
+	"RENAME can only rename variables and DEFEXPs"
 };
 #else
 extern char *error_str[NUM_ERRORS];
@@ -734,6 +740,10 @@ enum
 
 	/* 100 */
 	COM_CONTLOOP,
+	COM_STON,
+	COM_STOFF,
+	COM_RENAME,
+	COM_TERMSIZE,
 
 	NUM_COMMANDS
 };
@@ -811,6 +821,8 @@ DECL_COM(Watch)
 DECL_COM(Unwatch)
 DECL_COM(AngleType)
 DECL_COM(KillAll)
+DECL_COM(Strict)
+DECL_COM(Rename)
 
 #ifdef MAINFILE
 st_com command[NUM_COMMANDS] =
@@ -956,7 +968,11 @@ st_com command[NUM_COMMANDS] =
 	{ "MOVE",       comDeleteMove },
 
 	/* 100 */
-	{ "CONTLOOP",   comContLoop }
+	{ "CONTLOOP",   comContLoop },
+	{ "STON",       comStrict },
+	{ "STOFF",      comStrict },
+	{ "RENAME",     comRename },
+	{ "TERMSIZE",   comUnexpected }
 };
 #else
 extern st_com command[NUM_COMMANDS];
@@ -1564,6 +1580,7 @@ void setNewRunLine(st_runline *runline);
 int  loadProgram(char *filename, u_int merge_linenum, bool delprog);
 int  listProgram(FILE *fp, u_int from, u_int to, bool pause);
 int  moveProgLine(u_int from, u_int to);
+int  renameProgVarsAndDefExps(char *from, char *to, int *cnt);
 
 /* execute.c */
 bool execProgLine(st_progline *progline);
@@ -1588,6 +1605,7 @@ st_keyval *findKeyValue(st_var *var, char *key);
 int  validVariableName(char *name);
 void deleteVariable(st_var *var, st_runline *runline);
 void deleteVariables();
+void renameVariable(st_var *var, char *new_name);
 void dumpVariables(char *pat, bool dump_contents);
 void dumpVariable(st_var *var, bool dump_contents);
 
@@ -1615,6 +1633,7 @@ int getFirstFileMatch(int type, char *pat, char *matchpath, int depth);
 /* defexp.c */
 int createDefExp(st_runline *runline);
 st_defexp *getDefExp(char *name);
+void renameDefExp(st_defexp *exp, char *new_name);
 void deleteDefExp(st_runline *runline, bool force);
 void deleteDefExps();
 void dumpDefExps(char *pat);
@@ -1643,7 +1662,6 @@ void killChildProcesses();
 void createProcessArray();
 
 /* draw.c */
-void getTermSize(int sig);
 void locate(int x, int y);
 void drawString(int x, int y, char *str, int slen);
 void drawLine(int x1, int y1, int x2, int y2, char *str, int slen);
@@ -1678,6 +1696,8 @@ st_progline *on_error_goto;
 st_progline *on_error_gosub;
 st_progline *on_break_goto;
 st_progline *on_break_gosub;
+st_progline *on_termsize_goto;
+st_progline *on_termsize_gosub;
 
 st_runline *return_stack[MAX_RETURN_STACK];
 st_runline *prog_new_runline;
@@ -1707,6 +1727,8 @@ st_var *angle_mode_var;
 st_var *processes_var;
 st_var *kilobyte_var;
 st_var *indent_var;
+st_var *strict_mode_var;
+st_var *interrupted_var;
 
 st_defexp *first_defexp;
 st_defexp *last_defexp;

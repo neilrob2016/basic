@@ -89,10 +89,12 @@ bool execRunLine(st_runline *runline)
 	}
 
 	/* Interrupts take precedence over errors because they can cause them */
-	if (last_signal == SIGINT)
+	switch(last_signal)
 	{
+	case SIGINT:
 		last_signal = 0;
 		interrupted_runline = runline;
+		setValue(interrupted_var->value,VAL_NUM,NULL,1);
 
 		setValue(
 			break_line_var->value,
@@ -113,7 +115,6 @@ bool execRunLine(st_runline *runline)
 		if (on_break_gosub)
 		{
 			if (pushGosub(on_break_gosub,runline)) return TRUE;
-
 			doError(ERR_MAX_RECURSION,runline->parent);
 		}
 		else
@@ -130,8 +131,24 @@ bool execRunLine(st_runline *runline)
 			}
 			else puts("*** BREAK ***");
 		}
-
 		return FALSE;
+
+	case SIGWINCH:
+		last_signal = 0;
+		interrupted_runline = runline;
+		setValue(interrupted_var->value,VAL_NUM,NULL,1);
+
+		if (on_termsize_goto)
+		{
+			setNewRunLine(on_termsize_goto->first_runline);
+			return TRUE;
+		}
+		if (on_termsize_gosub)
+		{
+			if (pushGosub(on_termsize_gosub,runline)) return TRUE;
+			doError(ERR_MAX_RECURSION,runline->parent);
+		}
+		break;
 	}
 
 	if (err != OK)

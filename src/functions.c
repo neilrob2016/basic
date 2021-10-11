@@ -1485,6 +1485,8 @@ int funcSelect(int func, st_var **var, st_value *vallist, st_value *result)
 	int i;
 	int j;
 
+	setValue(interrupted_var->value,VAL_NUM,NULL,0);
+
 	if (!var[0]->index_cnt) return ERR_VAR_IS_NOT_ARRAY;
 
 	/* Must be 1D arrays */

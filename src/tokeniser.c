@@ -264,6 +264,7 @@ st_runline *checkSOLCommand(
 	case COM_BREAK:
 	case COM_END:
 	case COM_FROM:
+	case COM_TERMSIZE:
 		/* Ignore these */
 		return runline;
 
@@ -271,10 +272,12 @@ st_runline *checkSOLCommand(
 	case COM_GOSUB:
 	case COM_CONT:
 	case COM_CLEAR:
-		/* Won't be at the start if preceeded by ON ERROR or ON BREAK */
+		/* Won't be at the start if preceeded by o
+		   ON ERROR/BREAK/TERMSIZE */
 		new_token = &runline->tokens[runline->num_tokens-2];
 		if (IS_COM_TYPE(new_token,COM_ERROR) ||
-		    IS_COM_TYPE(new_token,COM_BREAK)) return runline;
+		    IS_COM_TYPE(new_token,COM_BREAK) ||
+		    IS_COM_TYPE(new_token,COM_TERMSIZE)) return runline;
 		break;
 	}
 
@@ -335,10 +338,14 @@ bool commandSanityCheck(st_progline *progline)
 		case COM_TROFF:
 		case COM_WRON:
 		case COM_WROFF:
+		case COM_STON:
+		case COM_STOFF:
 		case COM_CHOSEN:
 		case COM_DEFAULT:
+		case COM_ERROR:
 		case COM_BREAK:
 		case COM_END:
+		case COM_TERMSIZE:
 			if (runline->num_tokens > 1+pos) return FALSE;
 			break;
 
@@ -425,7 +432,8 @@ bool commandSanityCheck(st_progline *progline)
 			token = &runline->tokens[2+pos];
 
 			if (IS_COM_TYPE(&runline->tokens[1+pos],COM_BREAK) ||
-			    IS_COM_TYPE(&runline->tokens[1+pos],COM_ERROR))
+			    IS_COM_TYPE(&runline->tokens[1+pos],COM_ERROR) ||
+			    IS_COM_TYPE(&runline->tokens[1+pos],COM_TERMSIZE))
 			{
 				if (IS_COM_TYPE(token,COM_CONT) ||
 				    IS_COM_TYPE(token,COM_CLEAR) ||

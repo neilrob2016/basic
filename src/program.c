@@ -22,7 +22,6 @@ void subInitProgram()
 	last_signal = 0;
 	prog_new_runline_set = FALSE;
 
-	initOnSettings();
 	deleteDefExps();
 
 	for(i=0;i < MAX_STREAMS;++i)
@@ -60,6 +59,8 @@ void initOnSettings()
 	on_break_cont = FALSE;
 	on_error_cont = FALSE;
 	on_break_clear = FALSE;
+	on_termsize_goto = NULL;
+	on_termsize_gosub = NULL;
 }
 
 
@@ -74,6 +75,7 @@ void initProgram()
 	angle_in_degrees = TRUE;
 
 	subInitProgram();
+	initOnSettings();
 }
 
 
@@ -83,6 +85,7 @@ void initProgram()
 void resetProgram()
 {
 	subInitProgram();
+	initOnSettings();
 	if (prog_first_line)
 		setNewRunLine(prog_first_line->first_runline);
 	else
@@ -328,6 +331,7 @@ bool deleteProgLines(u_int from, u_int to)
 
 	/* Just to be safe */
 	subInitProgram();
+	initOnSettings();
 
 	return ret;
 }
@@ -804,6 +808,62 @@ int moveProgLine(u_int from, u_int to)
 	resetProgPointers();
 
 	return err;
+}
+
+
+
+
+int renameProgVarsAndDefExps(char *from, char *to, int *cnt)
+{
+	st_progline *pl;
+	st_runline *rl;
+	st_token *token;
+	st_defexp *exp;
+	st_var *var;
+	int i;
+
+	*cnt = 0;
+
+	/* If its a variable or defexp name then change them */
+	if ((var = getVariable(from)))
+	{
+		if (!validVariableName(to)) return ERR_INVALID_VAR_NAME;
+		renameVariable(var,to);
+	}
+	else if ((exp = getDefExp(from)))
+	{
+		if (!validVariableName(to)) return ERR_INVALID_DEFEXP_NAME;
+		renameDefExp(exp,to);
+	}
+
+	/* Go through program text and change the token strings */
+	for(pl=prog_first_line;pl;pl=pl->next)
+	{
+		for(rl=pl->first_runline;rl;rl=rl->next)
+		{
+			for(i=0;i < rl->num_tokens;++i)
+			{
+				token = &rl->tokens[i];
+
+				/* Only change variables and defexps because
+				   changing anything else is hassle */
+				if (IS_VAR(token) && !strcmp(token->str,from))
+				{
+					free(token->str);
+					token->str = strdup(to);
+					assert(token->str);
+					++*cnt;
+				}
+				else if (IS_DEFEXP(token) && !strcmp(token->str+1,from))
+				{
+					free(token->str);
+					assert(asprintf(&token->str,"!%s",to) != -1);
+					++*cnt;
+				}
+			}
+		}
+	}
+	return OK;
 }
 
 

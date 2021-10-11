@@ -1,37 +1,6 @@
 #include "globals.h"
 
 
-void getTermSize(int sig)
-{
-#ifdef TIOCGWINSZ
-	struct winsize ws;
-
-	if (ioctl(1,TIOCGWINSZ,&ws) != -1 && (ws.ws_col || ws.ws_row))
-	{
-		term_cols = ws.ws_col;
-		term_rows = ws.ws_row;
-	}
-	else
-	{
-#endif
-		/* Just default to standard terminal screen size if we
-		   can't get it */
-		term_cols = 80;
-		term_rows = 25;
-#ifdef TIOCGWINSZ
-	}
-#endif
-	if (term_cols_var)
-	{
-		setValue(term_cols_var->value,VAL_NUM,NULL,term_cols);
-		setValue(term_rows_var->value,VAL_NUM,NULL,term_rows);
-	}
-	last_signal = sig;
-}
-
-
-
-
 void locate(int x, int y)
 {
 	char ansi[31];

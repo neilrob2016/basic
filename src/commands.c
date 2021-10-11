@@ -1,3 +1,5 @@
+/*** The command functions are not in the same order as the commands are
+     defined in globals.h ***/
 #include "globals.h"
 
 #define CHECK_DIR_STREAM(S) \
@@ -39,7 +41,7 @@ int comDoNothing(int comnum, st_runline *runline)
 
 
 
-/******************************** MAIN FUNCS *********************************/
+/******************************** PROGRAM *********************************/
 
 /*** List the program or command history. 3 formats:
      LIST/HISTORY                : List all lines
@@ -153,6 +155,117 @@ int comListHistory(int comnum, st_runline *runline)
 
 
 
+/*** Renumber the lines. Format:
+     RENUM
+     RENUM <gap>
+     RENUM <gap> FROM <start line>
+ ***/
+int comRenum(int comnum, st_runline *runline)
+{
+	st_progline *pl;
+	st_runline *rl;
+	st_token *token;
+	st_value result;
+	char linestr[20];
+	int gap;
+	int linenum;
+	int start;
+	int start_set;
+	int pc;
+	int err;
+	int num_tokens;
+
+	start = 0;
+	start_set = 0;
+	if (runline->num_tokens > 1)
+	{
+		pc = 1;
+		initValue(&result);
+		if ((err = getRunLineValue(runline,&pc,VAL_NUM,EITHER,&result)) != OK)
+			return err;
+
+		if (result.dval < 1) return ERR_INVALID_ARG;
+		gap = (int)result.dval;
+
+		if (pc < runline->num_tokens)
+		{
+			/* Get the start line */
+			if (runline->num_tokens - pc < 2 ||
+			    !IS_COM_TYPE(&runline->tokens[pc],COM_FROM))
+				return ERR_SYNTAX;
+
+			++pc;
+			if ((err = getRunLineValue(
+				runline,&pc,VAL_NUM,TRUE,&result)) != OK)
+			{
+				return err;
+			}
+			if (result.dval < 1) return ERR_INVALID_LINENUM;
+			start = (int)result.dval;
+			start_set = 1;
+		}
+	}
+	else gap = 10;
+
+	if (!prog_first_line) return OK;
+
+	linenum = (start_set ? start : gap);
+
+	/* Reset all renumbered flags */
+	for(rl=prog_first_line->first_runline;rl;rl=rl->next)
+		rl->renumbered = FALSE;
+
+	for(pl=prog_first_line;pl;pl=pl->next)
+	{
+		if (pl->linenum < start) continue;
+
+		/* Go through all runlines and change any commands that
+		   pointed to this line number */
+		for(rl=prog_first_line->first_runline;rl;rl=rl->next)
+		{
+			if (rl->num_tokens < 2 || 
+			    rl->renumbered || 
+			    !IS_COM(&rl->tokens[0])) continue;
+
+			if (rl->tokens[0].subtype == COM_ON)
+				num_tokens = 4;
+			else
+				num_tokens = 2;
+
+			/* Only want line numbers that arn't part of an
+			   expression */
+			if (rl->num_tokens != num_tokens ||
+ 			    !IS_NUM(&rl->tokens[num_tokens-1])) continue;
+
+			token = &rl->tokens[num_tokens-1];
+			if ((u_int)token->dval == pl->linenum)
+			{
+				switch(rl->tokens[0].subtype)
+				{
+				case COM_GOTO:
+				case COM_GOSUB:
+				case COM_RESTORE:
+				case COM_AUTORESTORE:
+				case COM_ON:
+					sprintf(linestr,"%u",linenum);
+					token->dval = linenum;
+					free(token->str);
+					token->str = strdup(linestr);
+					assert(token->str);
+					rl->renumbered = TRUE;
+					break;
+				}
+			}
+		}
+		pl->linenum = linenum;
+		linenum += gap;
+	}
+	return OK;
+}
+
+
+
+
 int comNew(int comnum, st_runline *runline)
 {
 	deleteProgram();
@@ -167,45 +280,162 @@ int comNew(int comnum, st_runline *runline)
 
 
 
-int comClear(int comnum, st_runline *runline)
+int comRun(int comnum, st_runline *runline)
 {
-	st_token *token;
-	st_var *var;
-	int pc;
+	return doComRun(comnum,runline,1);
+}
+	
 
-	/* If no arguments delete all variables and reset program */
-	if (runline->num_tokens == 1)
+
+int doComRun(int comnum, st_runline *runline, int pc)
+{
+	st_value result;
+	int err;
+
+	deleteDefExps();
+	deleteVariables(runline);
+	resetSystemVariables();
+
+	/* This sets the new runline to the first in the program */
+	resetProgram();
+
+	/* Set $run_arg if an argument was passed */
+	if (runline->num_tokens > pc)
 	{
-		deleteVariables(runline);
-		resetSystemVariables();
-		clearDefMods();
-		subInitProgram();
-		return OK;
+		/* Pc > 1 if CHAIN command */
+		if (pc > 1)
+		{
+			if (NOT_COMMA(pc)) return ERR_SYNTAX;
+			++pc;
+		}
+		initValue(&result);
+
+		if ((err = getRunLineValue(
+			runline,&pc,VAL_UNDEF,TRUE,&result)) != OK)
+		{
+			return err;
+		}
+		if (pc < runline->num_tokens)
+		{
+			clearValue(&result);
+			return ERR_SYNTAX;
+		}
+		copyValue(run_arg_var->value,&result);
+		clearValue(&result);
 	}
 
-	/* If comma seperated list, eg: CLEAR a,b,c then just delete the
-	   variables given */
-	for(pc=1;pc < runline->num_tokens;++pc)
-	{
-		token = &runline->tokens[pc];
-		if (!IS_VAR(token)) return ERR_INVALID_ARG;
-		if (!(var = getVariable(token->str))) return ERR_UNDEFINED_VAR;
-		deleteVariable(var,runline);
-
-		if (++pc == runline->num_tokens) return OK;
-		if (NOT_COMMA(pc)) break;
-	}
-	return ERR_SYNTAX;
+	return OK;
 }
 
 
 
 
-/*** Clear the defined key mappings ***/
-int comClearDefMods(int comnum, st_runline *runline)
+/*** Too much hassle to rejig listProgram() to write into memory just for
+     this command so it does it own half arsed line listing which occasionally
+     adds too many spaces. Not a big deal. ***/
+int comEdit(int comnum, st_runline *runline)
 {
-	if (runline->num_tokens != 1) return ERR_SYNTAX;
-	clearDefMods();
+	st_progline *pl;
+	st_runline *rl;
+	st_value result;
+	st_token *token;
+	st_token *next_token;
+	char str[20];
+	bool add_colon;
+	int pc;
+	int err;
+	int i;
+
+	if (runline->parent->linenum) return ERR_NOT_ALLOWED_IN_PROG;
+
+	pc = 1;
+	initValue(&result);
+	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
+		return err;
+
+	if (result.dval < 0) return ERR_INVALID_ARG;
+	if (!(pl = getProgLine(runline->tokens[1].dval)))
+		return ERR_NO_SUCH_LINE;
+
+	sprintf(str,"%u ",pl->linenum);
+	clearKeyLine(next_keyb_line);
+	addWordToKeyLine(str);
+
+	for(rl=pl->first_runline;rl;rl=rl->next)
+	{
+		add_colon = TRUE;
+
+		for(i=0;i < rl->num_tokens;++i)
+		{
+			token = &rl->tokens[i];
+			next_token = (i+1 < rl->num_tokens) ?
+			             &rl->tokens[i+1] : NULL;
+
+			if (token->negative) addWordToKeyLine("-");
+
+			switch(token->type)
+			{
+			case TOK_COM:
+				if (rl != pl->first_runline || i)
+					addWordToKeyLine(" ");
+				addWordToKeyLine(token->str);
+				if (IS_COM_TYPE(token,COM_THEN) ||
+				    IS_COM_TYPE(token,COM_ELSE))
+				{
+					add_colon = FALSE;
+				}
+
+				/* Add a trailing space if next token is not a 
+				   command */
+				if (next_token && !IS_COM(next_token))
+					addWordToKeyLine(" ");
+				break;
+
+			case TOK_OP:
+				/* Some operators need spaces, others don't */
+				switch(token->subtype)
+				{
+				case OP_COMMA:
+				case OP_COLON:
+				case OP_HASH:
+				case OP_AT:
+				case OP_SEMI_COLON:
+				case OP_L_BRACKET:
+				case OP_R_BRACKET:
+				case OP_BIT_COMPL:
+					addWordToKeyLine(token->str);
+					break;
+
+				case OP_NOT:
+					addWordToKeyLine(token->str);
+					addWordToKeyLine(" ");
+					break;
+
+				default:
+					addWordToKeyLine(" ");
+					addWordToKeyLine(token->str);
+					addWordToKeyLine(" ");
+				}
+				break;
+
+			case TOK_STR:
+				addWordToKeyLine("\"");
+				addWordToKeyLine(token->str);
+				addWordToKeyLine("\"");
+				break;
+
+			default:
+				addWordToKeyLine(token->str);
+			}
+		}
+		if (rl == pl->last_runline) break;
+		addWordToKeyLine(" ");
+		if (add_colon) addWordToKeyLine(":");
+	}
+	
+	prompt();
+	drawKeyLine(next_keyb_line);
+	draw_prompt = FALSE;
 	return OK;
 }
 
@@ -295,51 +525,67 @@ int comDeleteMove(int comnum, st_runline *runline)
 
 
 
-int comRun(int comnum, st_runline *runline)
+/*** Switches line wrap on & off in LIST ***/
+int comWrap(int comnum, st_runline *runline)
 {
-	return doComRun(comnum,runline,1);
+	listing_line_wrap = (comnum == COM_WRON);
+	return OK;
 }
-	
 
 
-int doComRun(int comnum, st_runline *runline, int pc)
+
+
+/*** Sets number of spaces to indent by ***/
+int comIndent(int comnum, st_runline *runline)
 {
 	st_value result;
+	int pc;
 	int err;
 
-	deleteDefExps();
-	deleteVariables(runline);
-	resetSystemVariables();
+	pc = 1;
+	initValue(&result);
+	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
+		return err;
 
-	/* This sets the new runline to the first in the program */
-	resetProgram();
+	if (result.dval < 0) return ERR_INVALID_ARG;
+	indent_spaces = (int)result.dval;
+	setValue(indent_var->value,VAL_NUM,NULL,indent_spaces);
+	return OK;
+}
 
-	/* Set $run_arg if an argument was passed */
-	if (runline->num_tokens > pc)
+
+
+/******************************** VARIABLES **********************************/
+
+int comClear(int comnum, st_runline *runline)
+{
+	st_token *token;
+	st_var *var;
+	int pc;
+
+	/* If no arguments delete all variables and reset program */
+	if (runline->num_tokens == 1)
 	{
-		/* Pc > 1 if CHAIN command */
-		if (pc > 1)
-		{
-			if (NOT_COMMA(pc)) return ERR_SYNTAX;
-			++pc;
-		}
-		initValue(&result);
-
-		if ((err = getRunLineValue(
-			runline,&pc,VAL_UNDEF,TRUE,&result)) != OK)
-		{
-			return err;
-		}
-		if (pc < runline->num_tokens)
-		{
-			clearValue(&result);
-			return ERR_SYNTAX;
-		}
-		copyValue(run_arg_var->value,&result);
-		clearValue(&result);
+		deleteVariables(runline);
+		resetSystemVariables();
+		clearDefMods();
+		subInitProgram();
+		return OK;
 	}
 
-	return OK;
+	/* If comma seperated list, eg: CLEAR a,b,c then just delete the
+	   variables given */
+	for(pc=1;pc < runline->num_tokens;++pc)
+	{
+		token = &runline->tokens[pc];
+		if (!IS_VAR(token)) return ERR_INVALID_ARG;
+		if (!(var = getVariable(token->str))) return ERR_UNDEFINED_VAR;
+		deleteVariable(var,runline);
+
+		if (++pc == runline->num_tokens) return OK;
+		if (NOT_COMMA(pc)) break;
+	}
+	return ERR_SYNTAX;
 }
 
 
@@ -369,6 +615,7 @@ int comDimLet(int comnum, st_runline *runline)
 	{
 		token = &runline->tokens[pc];
 		if (!IS_VAR(token)) return ERR_SYNTAX;
+		if (getDefExp(token->str)) return ERR_DEFEXP_ALREADY_HAS_NAME;
 
 		switch(comnum)
 		{
@@ -617,89 +864,75 @@ int comRedim(int comnum, st_runline *runline)
 
 
 
-int comPrint(int comnum, st_runline *runline)
+/*** Dump all variables to screen ***/
+int comDump(int comnum, st_runline *runline)
 {
-	st_value result;
+	st_token *token;
 	int pc;
-	int diff;
-	int err;
-	int snum;
-	int fd;
-	int ret;
-	char *numstr;
 
-	initValue(&result);
-
-	/* Check for a stream number */
-	if (runline->num_tokens > 2 && IS_OP_TYPE(&runline->tokens[1],OP_HASH))
+	if (runline->num_tokens == 1)
 	{
-		pc = 2;
-		if ((err = getRunLineValue(
-			runline,&pc,VAL_NUM,FALSE,&result)) != OK)
-		{
-			return err;
-		}
-		if (result.dval >= MAX_STREAMS) return ERR_DIR_STREAM;
-		snum = result.dval - 1;
+		/* Dump everything */
+		dumpVariables(NULL,comnum == COM_DUMPC);
+		dumpDefExps(NULL);
+		return OK;
+	}
 
-		/* Let #0 = stdout so don't need seperate line to do stdout
-		   printing in a subroutine or whereever */
-		if (snum == -1) fd = STDOUT;
+	for(pc=1;pc < runline->num_tokens;++pc)
+	{
+		token = &runline->tokens[pc];
+
+		/* The ! isn't part of the name so won't match */
+		if (token->str[0] == '!') dumpDefExps(token->str+1);
 		else
 		{
-			CHECK_STREAM(snum)
-			fd = stream[snum];
+			dumpVariables(token->str,comnum == COM_DUMPC);
+			dumpDefExps(token->str);
 		}
-		if (pc < runline->num_tokens && NOT_COMMA(pc))
-			return ERR_SYNTAX;
-		++pc;
-	}
-	else
-	{
-		/* Default to stdout */
-		fd = STDOUT;
-		pc = 1;
-	}
 
-	/* Go through data to print */
-	for (;pc < runline->num_tokens;++pc)
-	{
-		if ((err = evalExpression(runline,&pc,&result)) != OK)
-		{
-			clearValue(&result);
-			return err;
-		}
-		if (result.type == VAL_STR)
-			ret = write(fd,result.sval,strlen(result.sval));
-		else
-		{
-			/* If we have fractional bit print as float else int */
-			if (IS_FLOAT(result.dval))
-				ret = asprintf(&numstr,"%f",result.dval);
-			else
-				ret = asprintf(&numstr,"%ld",(long)result.dval);
-			assert(ret != -1);
-			ret = write(fd,numstr,strlen(numstr));
-			free(numstr);
-		}
-		clearValue(&result);
-		if (ret == -1) return ERR_WRITE;
-
-		diff = runline->num_tokens - pc;
-		if (diff == 1)
-		{
-			if (IS_OP_TYPE(&runline->tokens[pc],OP_SEMI_COLON))
-				return OK;
-
-			return ERR_SYNTAX;
-		}
-		if (diff > 1 && NOT_COMMA(pc)) return ERR_SYNTAX;
+		if (++pc == runline->num_tokens) return OK;
+		if (NOT_COMMA(pc)) break;
 	}
-	return (write(fd,"\n",1) == -1) ? ERR_WRITE : OK;
+	return ERR_SYNTAX;
 }
 
 
 
+
+/*** Format: RENAME <old name> TO <new name> ***/
+int comRename(int comnum, st_runline *runline)
+{
+	st_token *fromtok = &runline->tokens[1];
+	st_token *totok = &runline->tokens[3];
+	int ret;
+	int cnt;
+
+	if (runline->num_tokens != 4 ||
+	    !IS_COM_TYPE(&runline->tokens[2],COM_TO)) return ERR_SYNTAX;
+
+	if (fromtok->type != TOK_VAR || totok->type != TOK_VAR)
+		return ERR_RENAME_TYPE;
+
+	if (!strcmp(fromtok->str,totok->str)) return ERR_RENAME_SAME;
+
+	if ((ret = renameProgVarsAndDefExps(fromtok->str,totok->str,&cnt)) != OK)
+		return ret;
+	printf("%d renamings.\n",cnt);
+	return OK;
+}
+
+
+
+
+int comStrict(int comnum, st_runline *runline)
+{
+	strict_mode = (comnum == COM_STON);
+	setValue(strict_mode_var->value,VAL_NUM,NULL,strict_mode);
+	return OK;
+}
+
+
+/*************************** CONTROL CONSTRUCTS ******************************/
 
 int comIf(int comnum, st_runline *runline)
 {
@@ -820,6 +1053,130 @@ int comReturn(int comnum, st_runline *runline)
 
 
 
+
+int comChoose(int comnum, st_runline *runline)
+{
+	st_value result;
+	st_value case_result;
+	st_runline *rl;
+	st_runline *default_rl;
+	st_runline *prev_case;
+	int err;
+	int pc;
+	int nest;
+
+	initValue(&result);
+	initValue(&case_result);
+
+	/* If jump pointer not set then find our matching CHOSEN */
+	if (!runline->jump && !setBlockEnd(runline,COM_CHOOSE,COM_CHOSEN))
+		return ERR_MISSING_CHOSEN;
+
+	pc = 1;
+	if ((err = getRunLineValue(runline,&pc,VAL_UNDEF,TRUE,&result)) != OK)
+		return err;
+
+	/* Find matching CASE or DEFAULT */
+	err = OK;
+	default_rl = NULL;
+	prev_case = NULL;
+
+	for(rl=runline->next,nest=0;rl != runline->jump;)
+	{
+		if (!IS_COM(&rl->tokens[0]))
+		{
+			rl = rl->next;
+			continue;
+		}
+
+		switch(rl->tokens[0].subtype)
+		{
+		case COM_CHOOSE:
+			++nest;
+			break;
+
+		case COM_CHOSEN:
+			--nest;
+			/* If it goes below zero then runline->jump isn't set
+			   correctly */
+			assert(nest >= 0);
+			break;
+
+		case COM_CASE:
+			if (nest)
+			{
+				if (rl->next_case)
+				{
+					rl = rl->next_case;
+					continue;
+				}
+				break;
+			}
+			pc = 1;
+			if (prev_case && !prev_case->next_case)
+				prev_case->next_case = rl;
+
+			prev_case = rl;
+			if ((err = getRunLineValue(
+				rl,&pc,VAL_UNDEF,TRUE,&case_result)) != OK)
+			{
+				goto DONE;
+			}
+			if (case_result.type == result.type &&
+			    ((case_result.type == VAL_NUM && 
+			      case_result.dval == result.dval) ||
+			     (case_result.type == VAL_STR &&
+			      !strcmp(result.sval,case_result.sval))))
+			{
+				setNewRunLine(rl);
+				goto DONE;
+			}
+			if (rl->next_case)
+			{
+				rl = rl->next_case;
+				continue;
+			}
+			break;
+
+		case COM_DEFAULT:
+			if (prev_case && !prev_case->next_case)
+				prev_case->next_case = rl;
+			prev_case = rl;
+			default_rl = rl;
+
+			/* Because DEFAULT doesn't have to be last */
+			if (rl->next_case)
+			{
+				rl = rl->next_case;
+				continue;
+			}
+			break;
+		}
+		rl = rl->next;
+	}
+
+	/* If DEFAULT jump to it else jump to CHOSEN */
+	if (default_rl)
+		setNewRunLine(default_rl);
+	else
+		setNewRunLine(runline->jump);
+
+	DONE:
+	clearValue(&result);
+	clearValue(&case_result);
+	return err;
+}
+
+
+
+
+int comChosen(int comnum, st_runline *runline)
+{
+	return runline->jump ? OK : ERR_UNEXPECTED_CHOSEN;
+}
+
+
+/********************************** LOOPS ************************************/
 
 int comWhile(int comnum, st_runline *runline)
 {
@@ -1191,6 +1548,35 @@ int comLend(int comnum, st_runline *runline)
 
 
 
+/*** Jump out of CHOOSE-CHOSEN and loop blocks ***/
+int comBreak(int comnum, st_runline *runline)
+{
+	if (runline->jump)
+	{
+		setNewRunLine(runline->jump);
+		return OK;
+	}
+	return ERR_UNEXPECTED_BREAK;
+}
+
+
+
+
+int comContLoop(int comnum, st_runline *runline)
+{
+	if (runline->jump)
+	{
+		if (runline->jump->for_loop)
+			runline->jump->for_loop->looped = TRUE;
+		setNewRunLine(runline->jump);
+		return OK;
+	}
+	return ERR_UNEXPECTED_CONTLOOP;
+}
+
+
+/******************************** DATA commands *****************************/
+
 /*** Read data from a DATA line. Nothing to do with I/O ***/
 int comRead(int comnum, st_runline *runline)
 {
@@ -1359,117 +1745,6 @@ int comRestore(int comnum, st_runline *runline)
 
 
 
-/*** Renumber the lines. Format:
-     RENUM
-     RENUM <gap>
-     RENUM <gap> FROM <start line>
- ***/
-int comRenum(int comnum, st_runline *runline)
-{
-	st_progline *pl;
-	st_runline *rl;
-	st_token *token;
-	st_value result;
-	char linestr[20];
-	int gap;
-	int linenum;
-	int start;
-	int start_set;
-	int pc;
-	int err;
-	int num_tokens;
-
-	start = 0;
-	start_set = 0;
-	if (runline->num_tokens > 1)
-	{
-		pc = 1;
-		initValue(&result);
-		if ((err = getRunLineValue(runline,&pc,VAL_NUM,EITHER,&result)) != OK)
-			return err;
-
-		if (result.dval < 1) return ERR_INVALID_ARG;
-		gap = (int)result.dval;
-
-		if (pc < runline->num_tokens)
-		{
-			/* Get the start line */
-			if (runline->num_tokens - pc < 2 ||
-			    !IS_COM_TYPE(&runline->tokens[pc],COM_FROM))
-				return ERR_SYNTAX;
-
-			++pc;
-			if ((err = getRunLineValue(
-				runline,&pc,VAL_NUM,TRUE,&result)) != OK)
-			{
-				return err;
-			}
-			if (result.dval < 1) return ERR_INVALID_LINENUM;
-			start = (int)result.dval;
-			start_set = 1;
-		}
-	}
-	else gap = 10;
-
-	if (!prog_first_line) return OK;
-
-	linenum = (start_set ? start : gap);
-
-	/* Reset all renumbered flags */
-	for(rl=prog_first_line->first_runline;rl;rl=rl->next)
-		rl->renumbered = FALSE;
-
-	for(pl=prog_first_line;pl;pl=pl->next)
-	{
-		if (pl->linenum < start) continue;
-
-		/* Go through all runlines and change any commands that
-		   pointed to this line number */
-		for(rl=prog_first_line->first_runline;rl;rl=rl->next)
-		{
-			if (rl->num_tokens < 2 || 
-			    rl->renumbered || 
-			    !IS_COM(&rl->tokens[0])) continue;
-
-			if (rl->tokens[0].subtype == COM_ON)
-				num_tokens = 4;
-			else
-				num_tokens = 2;
-
-			/* Only want line numbers that arn't part of an
-			   expression */
-			if (rl->num_tokens != num_tokens ||
- 			    !IS_NUM(&rl->tokens[num_tokens-1])) continue;
-
-			token = &rl->tokens[num_tokens-1];
-			if ((u_int)token->dval == pl->linenum)
-			{
-				switch(rl->tokens[0].subtype)
-				{
-				case COM_GOTO:
-				case COM_GOSUB:
-				case COM_RESTORE:
-				case COM_AUTORESTORE:
-				case COM_ON:
-					sprintf(linestr,"%u",linenum);
-					token->dval = linenum;
-					free(token->str);
-					token->str = strdup(linestr);
-					assert(token->str);
-					rl->renumbered = TRUE;
-					break;
-				}
-			}
-		}
-		pl->linenum = linenum;
-		linenum += gap;
-	}
-	return OK;
-}
-
-
-
-
 /*** Exit the interpreter back to the shell ***/
 int comExit(int comnum, st_runline *runline)
 {
@@ -1520,20 +1795,6 @@ int comStop(int comnum, st_runline *runline)
 
 
 
-/*** Jump out of CHOOSE-CHOSEN and loop blocks ***/
-int comBreak(int comnum, st_runline *runline)
-{
-	if (runline->jump)
-	{
-		setNewRunLine(runline->jump);
-		return OK;
-	}
-	return ERR_UNEXPECTED_BREAK;
-}
-
-
-
-
 /*** Restart from last BREAKed location ***/
 int comCont(int comnum, st_runline *runline)
 {
@@ -1546,20 +1807,6 @@ int comCont(int comnum, st_runline *runline)
 	return ERR_CANT_CONTINUE;
 }
 
-
-
-
-int comContLoop(int comnum, st_runline *runline)
-{
-	if (runline->jump)
-	{
-		if (runline->jump->for_loop)
-			runline->jump->for_loop->looped = TRUE;
-		setNewRunLine(runline->jump);
-		return OK;
-	}
-	return ERR_UNEXPECTED_CONTLOOP;
-}
 
 
 /*********************************** I/O ***********************************/
@@ -1899,6 +2146,90 @@ int comRm(int comnum, st_runline *runline)
 
 
 
+int comPrint(int comnum, st_runline *runline)
+{
+	st_value result;
+	int pc;
+	int diff;
+	int err;
+	int snum;
+	int fd;
+	int ret;
+	char *numstr;
+
+	initValue(&result);
+
+	/* Check for a stream number */
+	if (runline->num_tokens > 2 && IS_OP_TYPE(&runline->tokens[1],OP_HASH))
+	{
+		pc = 2;
+		if ((err = getRunLineValue(
+			runline,&pc,VAL_NUM,FALSE,&result)) != OK)
+		{
+			return err;
+		}
+		if (result.dval >= MAX_STREAMS) return ERR_DIR_STREAM;
+		snum = result.dval - 1;
+
+		/* Let #0 = stdout so don't need seperate line to do stdout
+		   printing in a subroutine or whereever */
+		if (snum == -1) fd = STDOUT;
+		else
+		{
+			CHECK_STREAM(snum)
+			fd = stream[snum];
+		}
+		if (pc < runline->num_tokens && NOT_COMMA(pc))
+			return ERR_SYNTAX;
+		++pc;
+	}
+	else
+	{
+		/* Default to stdout */
+		fd = STDOUT;
+		pc = 1;
+	}
+
+	/* Go through data to print */
+	for (;pc < runline->num_tokens;++pc)
+	{
+		if ((err = evalExpression(runline,&pc,&result)) != OK)
+		{
+			clearValue(&result);
+			return err;
+		}
+		if (result.type == VAL_STR)
+			ret = write(fd,result.sval,strlen(result.sval));
+		else
+		{
+			/* If we have fractional bit print as float else int */
+			if (IS_FLOAT(result.dval))
+				ret = asprintf(&numstr,"%f",result.dval);
+			else
+				ret = asprintf(&numstr,"%ld",(long)result.dval);
+			assert(ret != -1);
+			ret = write(fd,numstr,strlen(numstr));
+			free(numstr);
+		}
+		clearValue(&result);
+		if (ret == -1) return ERR_WRITE;
+
+		diff = runline->num_tokens - pc;
+		if (diff == 1)
+		{
+			if (IS_OP_TYPE(&runline->tokens[pc],OP_SEMI_COLON))
+				return OK;
+
+			return ERR_SYNTAX;
+		}
+		if (diff > 1 && NOT_COMMA(pc)) return ERR_SYNTAX;
+	}
+	return (write(fd,"\n",1) == -1) ? ERR_WRITE : OK;
+}
+
+
+
+
 /*** Input a whole line or single character. The single character option also
      has a timeout. Too many gotos in this function. Oh well. ***/
 int comInput(int comnum, st_runline *runline)
@@ -1930,6 +2261,8 @@ int comInput(int comnum, st_runline *runline)
 	double sleep_time;
 
 	dir_read = FALSE;
+	setValue(eof_var->value,VAL_NUM,NULL,0);
+	setValue(interrupted_var->value,VAL_NUM,NULL,0);
 
 	/* Check for a stream number */
 	if (IS_OP_TYPE(&runline->tokens[1],OP_HASH))
@@ -2027,8 +2360,6 @@ int comInput(int comnum, st_runline *runline)
 		}
 	}
 
-	setValue(eof_var->value,VAL_NUM,NULL,0);
-
 	/* If its a directory read can't use select() or timeout. Do it now */
 	if (dir_read)
 	{
@@ -2055,8 +2386,9 @@ int comInput(int comnum, st_runline *runline)
 		switch(select(FD_SETSIZE,&mask,0,0,tvptr))
 		{
 		case -1:
-			/* Ignore terminal resize signals */
-			if (last_signal == SIGWINCH)
+			/* Ignore term resize signals if no ON TERMSIZE set */
+			if (last_signal == SIGWINCH && 
+			    !on_termsize_goto && !on_termsize_gosub)
 			{
 				if (tvptr)
 				{
@@ -2285,148 +2617,6 @@ int comCloseDir(int comnum, st_runline *runline)
 	}
 	return ERR_SYNTAX; 
 }
-
-
-/************************************ MISC ************************************/
-
-/*** Delete a key/value pair from a map ***/
-int comDelKey(int comnum, st_runline *runline)
-{
-	st_value result;
-	st_token *token;
-	int pc;
-	int err;
-
-	token = &runline->tokens[1];
-	if (!token->var && !(token->var = getVariable(token->str)))
-		return ERR_UNDEFINED_VAR;
-
-	initValue(&result);
-	pc = 3;
-	if ((err = getRunLineValue(runline,&pc,VAL_STR,TRUE,&result)) != OK)
-		return err;
-
-	err = deleteMapKeyValue(token->var,result.sval);
-	clearValue(&result);
-	return err;
-}
-
-
-
-
-
-/*** Set the place to jump to on an error ***/
-int comOn(int comnum, st_runline *runline)
-{
-	st_progline *progline;
-	st_value result;
-	bool is_error;
-	int err;
-	int pc;
-
-	/* ERROR or BREAK. Checked already in tokeniser.c */
-	if (IS_COM_TYPE(&runline->tokens[1],COM_ERROR))
-	{
-		/* Check for ON ERROR CONT */
-		if (IS_COM_TYPE(&runline->tokens[2],COM_CONT))
-		{
-			on_error_goto = NULL;
-			on_error_gosub = NULL;
-			on_error_cont = TRUE;
-			return OK;
-		}
-		/* Check for ON ERROR BREAK */
-		if (IS_COM_TYPE(&runline->tokens[2],COM_BREAK))
-		{
-			on_error_goto = NULL;
-			on_error_gosub = NULL;
-			on_error_cont = FALSE;
-			return OK;
-		}
-		is_error = TRUE;
-	}
-	else
-	{
-		/* Check for ON BREAK CONT */
-		if (IS_COM_TYPE(&runline->tokens[2],COM_CONT))
-		{
-			on_break_goto = NULL;
-			on_break_gosub = NULL;
-			on_break_cont = TRUE;
-			return OK;
-		}
-		/* Check for ON BREAK BREAK */
-		if (IS_COM_TYPE(&runline->tokens[2],COM_BREAK))
-		{
-			on_break_goto = NULL;
-			on_break_gosub = NULL;
-			on_break_cont = FALSE;
-			return OK;
-		}
-		/* This works alongside the other ON BREAK options so don't
-		   clear them */	
-		if (IS_COM_TYPE(&runline->tokens[2],COM_CLEAR))
-		{
-			on_break_clear = TRUE;
-			return OK;
-		}
-		is_error = FALSE;
-	}
-
-	/* Eval line number */
-	pc = 3;
-	initValue(&result);
-	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
-		return err;
-
-	if (result.dval < 1) return ERR_INVALID_LINENUM;
-
-	if (!(progline = getProgLine(result.dval))) return ERR_NO_SUCH_LINE;
-
-	/* Can only have one or the other set for obvious reasons */
-	if (IS_COM_TYPE(&runline->tokens[2],COM_GOTO))
-	{
-		if (is_error)
-		{
-			on_error_goto = progline;
-			on_error_gosub = NULL;
-			on_error_cont = FALSE;
-		}
-		else
-		{
-			on_break_goto = progline;
-			on_break_gosub = NULL;
-			on_break_cont = FALSE;
-		}
-	}
-	else if (is_error)
-	{
-		on_error_goto = NULL;
-		on_error_gosub = progline;
-		on_error_cont = FALSE;
-	}
-	else
-	{
-		on_break_goto = NULL;
-		on_break_gosub = progline;
-		on_break_cont = FALSE;
-	}
-
-	return OK;
-}
-
-
-
-
-int comAngleType(int comnum, st_runline *runline)
-{
-	angle_in_degrees = (comnum == COM_DEG);
-        setValue(
-		angle_mode_var->value,
-		VAL_STR,angle_in_degrees ? "DEG" : "RAD",0);
-	return OK;
-}
-
 
 
 /******************************* TERM SCREEN *********************************/
@@ -2784,114 +2974,7 @@ int comLineRectCircle(int comnum, st_runline *runline)
 }
 
 
-
-/********************************* MORE MISC *********************************/
-
-
-/*** Value is given in seconds ***/
-int comSleep(int comnum, st_runline *runline)
-{
-	st_value result;
-	double start;
-	double end;
-	double sleep_time;
-	int pc;
-	int err;
-
-	pc = 1;
-	initValue(&result);
-	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
-		return err;
-
-	if (result.dval < 0) return ERR_INVALID_ARG;
-
-	start = getCurrentTime();
-	sleep_time = result.dval * 1000000;
-	while(1)
-	{
-		if (usleep((long)sleep_time) != -1) return OK;
-		if (last_signal != SIGWINCH) return ERR_SLEEP;
-
-		last_signal = 0;
-		end = getCurrentTime();
-		sleep_time = sleep_time - (end - start) * 1000000;
-		start = end;
-	}
-	return OK;
-}
-
-
-
-
-/*** Sets tracing mode ***/
-int comTrace(int comnum, st_runline *runline)
-{
-	tracing_mode = (comnum == COM_TROFF ? TRACING_OFF : 
-	                (comnum == COM_TRON ? TRACING_NOSTEP : TRACING_STEP));
-	return OK;
-}
-
-
-
-
-/*** Switches line wrap on & off in LIST ***/
-int comWrap(int comnum, st_runline *runline)
-{
-	listing_line_wrap = (comnum == COM_WRON);
-	return OK;
-}
-
-
-
-
-/*** Sets number of spaces to indent by ***/
-int comIndent(int comnum, st_runline *runline)
-{
-	st_value result;
-	int pc;
-	int err;
-
-	pc = 1;
-	initValue(&result);
-	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
-		return err;
-
-	if (result.dval < 0) return ERR_INVALID_ARG;
-	indent_spaces = (int)result.dval;
-	setValue(indent_var->value,VAL_NUM,NULL,indent_spaces);
-	return OK;
-}
-
-
-
-
-int comSeed(int comnum, st_runline *runline)
-{
-	st_value result;
-	int pc;
-	int err;
-
-	pc = 1;
-	initValue(&result);
-	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
-		return err;
-
-	if (result.dval < 0) return ERR_INVALID_ARG;
-	srandom(result.dval);
-	return OK;
-}
-
-
-
-
-/*** Define an expression ***/
-int comDefExp(int comnum, st_runline *runline)
-{
-	return createDefExp(runline);
-}
-
-
-
+/********************************* KEYBOARD ********************************/
 
 /*** Map a key to a string that will be displayed when the key is pressed ***/
 int comDefMod(int comnum, st_runline *runline)
@@ -2965,36 +3048,323 @@ int comDefMod(int comnum, st_runline *runline)
 
 
 
-/*** Dump all variables to screen ***/
-int comDump(int comnum, st_runline *runline)
+/*** Clear the defined key mappings ***/
+int comClearDefMods(int comnum, st_runline *runline)
+{
+	if (runline->num_tokens != 1) return ERR_SYNTAX;
+	clearDefMods();
+	return OK;
+}
+
+
+/********************************* WATCHING ********************************/
+
+int comWatch(int comnum, st_runline *runline)
 {
 	st_token *token;
+	int ret;
 	int pc;
 
+	/* If no arguments print the current watched variables */
 	if (runline->num_tokens == 1)
 	{
-		/* Dump everything */
-		dumpVariables(NULL,comnum == COM_DUMPC);
-		dumpDefExps(NULL);
+		printWatchVars();
 		return OK;
 	}
-
 	for(pc=1;pc < runline->num_tokens;++pc)
 	{
 		token = &runline->tokens[pc];
-
-		/* The ! isn't part of the name so won't match */
-		if (token->str[0] == '!') dumpDefExps(token->str+1);
-		else
-		{
-			dumpVariables(token->str,comnum == COM_DUMPC);
-			dumpDefExps(token->str);
-		}
-
+		if (!IS_VAR(token)) return ERR_INVALID_ARG;
+		if ((ret = addWatchVar(token->str)) != OK)
+			return ret;
 		if (++pc == runline->num_tokens) return OK;
 		if (NOT_COMMA(pc)) break;
 	}
 	return ERR_SYNTAX;
+}
+
+
+
+
+int comUnwatch(int comnum, st_runline *runline)
+{
+	st_token *token;
+	int ret;
+	int pc;
+
+	/* If no arguments clear all variables */
+	if (runline->num_tokens == 1)
+	{
+		clearWatchVars();
+		puts("All watch variables cleared.");
+		return OK;
+	}
+	for(pc=1;pc < runline->num_tokens;++pc)
+	{
+		token = &runline->tokens[pc];
+		if (!IS_VAR(token)) return ERR_INVALID_ARG;
+		if ((ret = removeWatchVar(token->str)) != OK)
+			return ret;
+		if (++pc == runline->num_tokens) return OK;
+		if (NOT_COMMA(pc)) break;
+	}
+	return ERR_SYNTAX;
+}
+
+
+/************************************ MISC ************************************/
+
+/*** Delete a key/value pair from a map ***/
+int comDelKey(int comnum, st_runline *runline)
+{
+	st_value result;
+	st_token *token;
+	int pc;
+	int err;
+
+	token = &runline->tokens[1];
+	if (!token->var && !(token->var = getVariable(token->str)))
+		return ERR_UNDEFINED_VAR;
+
+	initValue(&result);
+	pc = 3;
+	if ((err = getRunLineValue(runline,&pc,VAL_STR,TRUE,&result)) != OK)
+		return err;
+
+	err = deleteMapKeyValue(token->var,result.sval);
+	clearValue(&result);
+	return err;
+}
+
+
+
+
+
+/*** Set the place to jump to on an error or break (control-C) ***/
+int comOn(int comnum, st_runline *runline)
+{
+	st_progline *progline;
+	st_token *token;
+	st_value result;
+	bool is_cont;
+	bool is_break;
+	int err;
+	int pc;
+
+	token = &runline->tokens[1];
+	assert(token->type == TOK_COM);
+
+	is_cont = IS_COM_TYPE(&runline->tokens[2],COM_CONT);
+	is_break = IS_COM_TYPE(&runline->tokens[2],COM_BREAK);
+
+	/* ERROR or BREAK. Keywords following already syntax checked already 
+	   in tokeniser.c */
+	switch(token->subtype)
+	{
+	case COM_ERROR:
+		/* ON ERROR CONT */
+		if (is_cont)
+		{
+			on_error_goto = NULL;
+			on_error_gosub = NULL;
+			on_error_cont = TRUE;
+			return OK;
+		}
+		/* ON ERROR BREAK */
+		if (is_break)
+		{
+			on_error_goto = NULL;
+			on_error_gosub = NULL;
+			on_error_cont = FALSE;
+			return OK;
+		}
+		break;
+	case COM_BREAK:
+		/* ON BREAK CONT */
+		if (is_cont)
+		{
+			on_break_goto = NULL;
+			on_break_gosub = NULL;
+			on_break_cont = TRUE;
+			return OK;
+		}
+		/* ON BREAK BREAK */
+		if (is_break)
+		{
+			on_break_goto = NULL;
+			on_break_gosub = NULL;
+			on_break_cont = FALSE;
+			return OK;
+		}
+		/* This works alongside the other ON BREAK options so don't
+		   clear them */	
+		if (IS_COM_TYPE(&runline->tokens[2],COM_CLEAR))
+		{
+			on_break_clear = TRUE;
+			return OK;
+		}
+		break;
+	case COM_TERMSIZE:
+		/* ON TERMSIZE CONT */
+		if (is_cont)
+		{
+			on_termsize_goto = NULL;
+			on_termsize_gosub = NULL;
+			return OK;
+		}
+		break;
+	default:
+		assert(0);
+	}
+
+	/* Eval line number */
+	pc = 3;
+	initValue(&result);
+	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
+		return err;
+
+	if (result.dval < 1) return ERR_INVALID_LINENUM;
+
+	if (!(progline = getProgLine(result.dval))) return ERR_NO_SUCH_LINE;
+
+	/* Can only have one or the other set for obvious reasons */
+	if (IS_COM_TYPE(&runline->tokens[2],COM_GOTO))
+	{
+		switch(token->subtype)
+		{
+		case COM_ERROR:
+			on_error_goto = progline;
+			on_error_gosub = NULL;
+			on_error_cont = FALSE;
+			break;
+		case COM_BREAK:
+			on_break_goto = progline;
+			on_break_gosub = NULL;
+			on_break_cont = FALSE;
+			break;
+		case COM_TERMSIZE:
+			on_termsize_goto = progline;
+			on_termsize_gosub = NULL;
+			break;
+		default:
+			assert(0);
+		}
+		return OK;
+	}
+	/* GOSUB */
+	switch(token->subtype)
+	{
+	case COM_ERROR:
+		on_error_goto = NULL;
+		on_error_gosub = progline;
+		on_error_cont = FALSE;
+		break;
+	case COM_BREAK:
+		on_break_goto = NULL;
+		on_break_gosub = progline;
+		on_break_cont = FALSE;
+		break;
+	case COM_TERMSIZE:
+		on_termsize_goto = NULL;
+		on_termsize_gosub = progline;
+		break;
+	default:
+		assert(0);
+	}
+
+	return OK;
+}
+
+
+
+
+int comAngleType(int comnum, st_runline *runline)
+{
+	angle_in_degrees = (comnum == COM_DEG);
+        setValue(
+		angle_mode_var->value,
+		VAL_STR,angle_in_degrees ? "DEG" : "RAD",0);
+	return OK;
+}
+
+
+
+
+/*** Value is given in seconds ***/
+int comSleep(int comnum, st_runline *runline)
+{
+	st_value result;
+	double start;
+	double end;
+	double sleep_time;
+	int pc;
+	int err;
+
+	setValue(interrupted_var->value,VAL_NUM,NULL,0);
+
+	pc = 1;
+	initValue(&result);
+	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
+		return err;
+
+	if (result.dval < 0) return ERR_INVALID_ARG;
+
+	start = getCurrentTime();
+	sleep_time = result.dval * 1000000;
+
+	while(1)
+	{
+		if (usleep((long)sleep_time) != -1) return OK;
+
+		if (last_signal != SIGWINCH ||
+		    on_termsize_goto || on_termsize_gosub) return ERR_SLEEP;
+
+		/* Try and recover after interrupt */
+		last_signal = 0;
+		end = getCurrentTime();
+		sleep_time = sleep_time - (end - start) * 1000000;
+		start = end;
+	}
+	return OK;
+}
+
+
+
+
+/*** Sets tracing mode ***/
+int comTrace(int comnum, st_runline *runline)
+{
+	tracing_mode = (comnum == COM_TROFF ? TRACING_OFF : 
+	                (comnum == COM_TRON ? TRACING_NOSTEP : TRACING_STEP));
+	return OK;
+}
+
+
+
+
+int comSeed(int comnum, st_runline *runline)
+{
+	st_value result;
+	int pc;
+	int err;
+
+	pc = 1;
+	initValue(&result);
+	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
+		return err;
+
+	if (result.dval < 0) return ERR_INVALID_ARG;
+	srandom(result.dval);
+	return OK;
+}
+
+
+
+
+/*** Define an expression ***/
+int comDefExp(int comnum, st_runline *runline)
+{
+	return createDefExp(runline);
 }
 
 
@@ -3073,118 +3443,6 @@ int comHelp(int comnum, st_runline *runline)
 
 
 
-/*** Too much hassle to rejig listProgram() to write into memory just for
-     this command so it does it own half arsed line listing which occasionally
-     adds too many spaces. Not a big deal. ***/
-int comEdit(int comnum, st_runline *runline)
-{
-	st_progline *pl;
-	st_runline *rl;
-	st_value result;
-	st_token *token;
-	st_token *next_token;
-	char str[20];
-	bool add_colon;
-	int pc;
-	int err;
-	int i;
-
-	if (runline->parent->linenum) return ERR_NOT_ALLOWED_IN_PROG;
-
-	pc = 1;
-	initValue(&result);
-	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
-		return err;
-
-	if (result.dval < 0) return ERR_INVALID_ARG;
-	if (!(pl = getProgLine(runline->tokens[1].dval)))
-		return ERR_NO_SUCH_LINE;
-
-	sprintf(str,"%u ",pl->linenum);
-	clearKeyLine(next_keyb_line);
-	addWordToKeyLine(str);
-
-	for(rl=pl->first_runline;rl;rl=rl->next)
-	{
-		add_colon = TRUE;
-
-		for(i=0;i < rl->num_tokens;++i)
-		{
-			token = &rl->tokens[i];
-			next_token = (i+1 < rl->num_tokens) ?
-			             &rl->tokens[i+1] : NULL;
-
-			if (token->negative) addWordToKeyLine("-");
-
-			switch(token->type)
-			{
-			case TOK_COM:
-				if (rl != pl->first_runline || i)
-					addWordToKeyLine(" ");
-				addWordToKeyLine(token->str);
-				if (IS_COM_TYPE(token,COM_THEN) ||
-				    IS_COM_TYPE(token,COM_ELSE))
-				{
-					add_colon = FALSE;
-				}
-
-				/* Add a trailing space if next token is not a 
-				   command */
-				if (next_token && !IS_COM(next_token))
-					addWordToKeyLine(" ");
-				break;
-
-			case TOK_OP:
-				/* Some operators need spaces, others don't */
-				switch(token->subtype)
-				{
-				case OP_COMMA:
-				case OP_COLON:
-				case OP_HASH:
-				case OP_AT:
-				case OP_SEMI_COLON:
-				case OP_L_BRACKET:
-				case OP_R_BRACKET:
-				case OP_BIT_COMPL:
-					addWordToKeyLine(token->str);
-					break;
-
-				case OP_NOT:
-					addWordToKeyLine(token->str);
-					addWordToKeyLine(" ");
-					break;
-
-				default:
-					addWordToKeyLine(" ");
-					addWordToKeyLine(token->str);
-					addWordToKeyLine(" ");
-				}
-				break;
-
-			case TOK_STR:
-				addWordToKeyLine("\"");
-				addWordToKeyLine(token->str);
-				addWordToKeyLine("\"");
-				break;
-
-			default:
-				addWordToKeyLine(token->str);
-			}
-		}
-		if (rl == pl->last_runline) break;
-		addWordToKeyLine(" ");
-		if (add_colon) addWordToKeyLine(":");
-	}
-	
-	prompt();
-	drawKeyLine(next_keyb_line);
-	draw_prompt = FALSE;
-	return OK;
-}
-
-
-
-
 /*** Evaluate an expression and dump result. Allows calling functions like
      kill() without having to assign result to anything ***/
 int comEval(int comnum, st_runline *runline)
@@ -3213,187 +3471,6 @@ int comKillAll(int comnum, st_runline *runline)
 {
 	killChildProcesses();
 	return OK;
-}
-
-
-
-/********************************* CHOOSE BLOCK ******************************/
-
-int comChoose(int comnum, st_runline *runline)
-{
-	st_value result;
-	st_value case_result;
-	st_runline *rl;
-	st_runline *default_rl;
-	st_runline *prev_case;
-	int err;
-	int pc;
-	int nest;
-
-	initValue(&result);
-	initValue(&case_result);
-
-	/* If jump pointer not set then find our matching CHOSEN */
-	if (!runline->jump && !setBlockEnd(runline,COM_CHOOSE,COM_CHOSEN))
-		return ERR_MISSING_CHOSEN;
-
-	pc = 1;
-	if ((err = getRunLineValue(runline,&pc,VAL_UNDEF,TRUE,&result)) != OK)
-		return err;
-
-	/* Find matching CASE or DEFAULT */
-	err = OK;
-	default_rl = NULL;
-	prev_case = NULL;
-
-	for(rl=runline->next,nest=0;rl != runline->jump;)
-	{
-		if (!IS_COM(&rl->tokens[0]))
-		{
-			rl = rl->next;
-			continue;
-		}
-
-		switch(rl->tokens[0].subtype)
-		{
-		case COM_CHOOSE:
-			++nest;
-			break;
-
-		case COM_CHOSEN:
-			--nest;
-			/* If it goes below zero then runline->jump isn't set
-			   correctly */
-			assert(nest >= 0);
-			break;
-
-		case COM_CASE:
-			if (nest)
-			{
-				if (rl->next_case)
-				{
-					rl = rl->next_case;
-					continue;
-				}
-				break;
-			}
-			pc = 1;
-			if (prev_case && !prev_case->next_case)
-				prev_case->next_case = rl;
-
-			prev_case = rl;
-			if ((err = getRunLineValue(
-				rl,&pc,VAL_UNDEF,TRUE,&case_result)) != OK)
-			{
-				goto DONE;
-			}
-			if (case_result.type == result.type &&
-			    ((case_result.type == VAL_NUM && 
-			      case_result.dval == result.dval) ||
-			     (case_result.type == VAL_STR &&
-			      !strcmp(result.sval,case_result.sval))))
-			{
-				setNewRunLine(rl);
-				goto DONE;
-			}
-			if (rl->next_case)
-			{
-				rl = rl->next_case;
-				continue;
-			}
-			break;
-
-		case COM_DEFAULT:
-			if (prev_case && !prev_case->next_case)
-				prev_case->next_case = rl;
-			prev_case = rl;
-			default_rl = rl;
-
-			/* Because DEFAULT doesn't have to be last */
-			if (rl->next_case)
-			{
-				rl = rl->next_case;
-				continue;
-			}
-			break;
-		}
-		rl = rl->next;
-	}
-
-	/* If DEFAULT jump to it else jump to CHOSEN */
-	if (default_rl)
-		setNewRunLine(default_rl);
-	else
-		setNewRunLine(runline->jump);
-
-	DONE:
-	clearValue(&result);
-	clearValue(&case_result);
-	return err;
-}
-
-
-
-
-int comChosen(int comnum, st_runline *runline)
-{
-	return runline->jump ? OK : ERR_UNEXPECTED_CHOSEN;
-}
-
-
-
-/********************************* WATCHING ********************************/
-
-int comWatch(int comnum, st_runline *runline)
-{
-	st_token *token;
-	int ret;
-	int pc;
-
-	/* If no arguments print the current watched variables */
-	if (runline->num_tokens == 1)
-	{
-		printWatchVars();
-		return OK;
-	}
-	for(pc=1;pc < runline->num_tokens;++pc)
-	{
-		token = &runline->tokens[pc];
-		if (!IS_VAR(token)) return ERR_INVALID_ARG;
-		if ((ret = addWatchVar(token->str)) != OK)
-			return ret;
-		if (++pc == runline->num_tokens) return OK;
-		if (NOT_COMMA(pc)) break;
-	}
-	return ERR_SYNTAX;
-}
-
-
-
-
-int comUnwatch(int comnum, st_runline *runline)
-{
-	st_token *token;
-	int ret;
-	int pc;
-
-	/* If no arguments clear all variables */
-	if (runline->num_tokens == 1)
-	{
-		clearWatchVars();
-		puts("All watch variables cleared.");
-		return OK;
-	}
-	for(pc=1;pc < runline->num_tokens;++pc)
-	{
-		token = &runline->tokens[pc];
-		if (!IS_VAR(token)) return ERR_INVALID_ARG;
-		if ((ret = removeWatchVar(token->str)) != OK)
-			return ret;
-		if (++pc == runline->num_tokens) return OK;
-		if (NOT_COMMA(pc)) break;
-	}
-	return ERR_SYNTAX;
 }
 
 

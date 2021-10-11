@@ -46,3 +46,5 @@ $pi           : Value of PI
 $e            : Value of Eulers number (natural log base)
 $true         : 1
 $false        : 0
+$interrupted  : Set to 1 if a signal interrupted the program. Reset to 0
+                by CLEAR, NEW, RUN, INPUT, SLEEP and select().

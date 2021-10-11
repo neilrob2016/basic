@@ -5,6 +5,8 @@
 #define INDEX_CHAR(N) (N[0] == '$' ? N[1] : N[0])
 
 char *vartype[NUM_VAR_TYPES] = { "STD","MAP","MEM" };
+void  addVarToList(st_var *var);
+void  removeVarFromList(st_var *var);
 int   checkIndex(st_var *var, int index_cnt, int *index, int *arrpos);
 int   setMapValue(st_var *var, char *key, st_value *value);
 int   getMapValue(st_var *var, char *key, st_value *result);
@@ -36,9 +38,6 @@ void createSystemVariables(int argc, char **argv, char **env)
 
 	var = createVariable("$build_options",VAR_STD,0,NULL);
 	setValue(var->value,VAL_STR,build_options,0);
-
-	var = createVariable("$strict_mode",VAR_STD,0,NULL);
-	setValue(var->value,VAL_NUM,NULL,strict_mode);
 
 	var = createVariable("$pi",VAR_STD,0,NULL);
 	setValue(var->value,VAL_NUM,NULL,3.14159265358979323846);
@@ -73,6 +72,12 @@ void createSystemVariables(int argc, char **argv, char **env)
 
 	indent_var = createVariable("$indent",VAR_STD,0,NULL);
 	setValue(indent_var->value,VAL_NUM,NULL,indent_spaces);
+
+	strict_mode_var = createVariable("$strict_mode",VAR_STD,0,NULL);
+	setValue(strict_mode_var->value,VAL_NUM,NULL,strict_mode);
+
+	interrupted_var = createVariable("$interrupted",VAR_STD,0,NULL);
+	setValue(interrupted_var->value,VAL_NUM,NULL,0);
 
 	/* Unix variables */
 	pid_var = createVariable("$pid",VAR_STD,0,NULL);
@@ -159,6 +164,7 @@ void resetSystemVariables()
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
 	setValue(angle_mode_var->value,VAL_STR,angle_in_degrees ? "DEG" : "RAD",0);
 	setValue(run_arg_var->value,VAL_STR,NULL,0);
+	setValue(interrupted_var->value,VAL_NUM,NULL,0);
 	createProcessArray();
 }
 
@@ -185,7 +191,6 @@ st_var *createVariable(char *name, int type, int index_cnt, int *index)
 	st_var *var;
 	int size;
 	int i;
-	int c;
 
 	assert((var = (st_var *)malloc(sizeof(st_var))));
 	bzero(var,sizeof(st_var));
@@ -236,7 +241,24 @@ st_var *createVariable(char *name, int type, int index_cnt, int *index)
 		assert(0);
 	}
 	
-	c = INDEX_CHAR(name);
+	addVarToList(var);
+
+	if (findWatchVar(name) != -1)
+	{
+		printf("{DIM,%s%s,%s(%d)}\n",
+			vartype[type],index_cnt ? "-ARRAY" : "",name,var->arrsize);
+	}
+
+	return var;
+}
+
+
+
+
+void addVarToList(st_var *var)
+{
+	int c = INDEX_CHAR(var->name);
+
 	if (first_var[c])
 	{
 		last_var[c]->next = var;
@@ -245,14 +267,6 @@ st_var *createVariable(char *name, int type, int index_cnt, int *index)
 	else first_var[c] = var;
 
 	last_var[c] = var;
-	
-	if (findWatchVar(name) != -1)
-	{
-		printf("{DIM,%s%s,%s(%d)}\n",
-			vartype[type],index_cnt ? "-ARRAY" : "",name,var->arrsize);
-	}
-
-	return var;
 }
 
 
@@ -606,18 +620,7 @@ void deleteVariable(st_var *var, st_runline *runline)
 	int h;
 	int i;
 	
-	c = INDEX_CHAR(var->name);
-
-	/* Remove from linked list */
-	if (var == first_var[c])
-		first_var[c] = var->next;
-	else
-		var->prev->next = var->next;
-
-	if (var == last_var[c])
-		last_var[c] = var->prev;
-	else 
-		var->next->prev = var->prev;
+	removeVarFromList(var);
 
 	/* Go through all program tokens and unset any var pointers */
 	if (prog_first_line)
@@ -692,6 +695,25 @@ void deleteVariable(st_var *var, st_runline *runline)
 
 
 
+void removeVarFromList(st_var *var)
+{
+	int c = INDEX_CHAR(var->name);
+
+	/* Remove from linked list */
+	if (var == first_var[c])
+		first_var[c] = var->next;
+	else
+		var->prev->next = var->next;
+
+	if (var == last_var[c])
+		last_var[c] = var->prev;
+	else 
+		var->next->prev = var->prev;
+}
+
+
+
+
 void resetRunLineVariablePointer(st_runline *runline, st_var *var)
 {
 	int i;
@@ -723,6 +745,21 @@ void deleteVariables(st_runline *runline)
 			if (var->name[0] != '$') deleteVariable(var,runline);
 		}
 	}
+}
+
+
+
+
+void renameVariable(st_var *var, char *new_name)
+{
+	/* The shortcut list uses the first letter of the name as an index */
+	removeVarFromList(var);
+
+	FREE(var->name);
+	var->name = strdup(new_name);
+	assert(var->name);
+
+	addVarToList(var);
 }
 
 

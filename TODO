@@ -1,6 +1,2 @@
-ON <xterm/window size change> GOTO/GOSUB
-search and replace of variable names in a program
-
 GOTO/GOSUB string labels
-TRONS doesn't play nice with ON BREAK
-
+INPUT loses any text entered if its interrupted

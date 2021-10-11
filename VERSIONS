@@ -195,3 +195,12 @@ October 2021
   where a colon was placed and could cause a segmentation fault.
 - Fixed bug where popen() streams weren't closed on NEW.
 - $run_arg now defaults to an empty string if not set rather than zero.
+
+
+1.7.0
+- Added RENAME, STON and STOFF commands.
+- Added ON TERMSIZE GOTO/GOSUB/CONT command.
+- Added $interrupted system variable.
+- Fixed bug that allowed variables and DEFEXPs to have the same name.
+- Changed the text of some error messages to make them clearer.
+- Removed no longer used error ERR_INVALID_ASSIGNMENT

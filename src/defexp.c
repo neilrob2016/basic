@@ -4,15 +4,14 @@ int createDefExp(st_runline *runline)
 {
 	st_defexp *exp;
 	char *name;
-	char *s;
 
 	name = runline->tokens[1].str;
 	if (getDefExp(name)) return ERR_DUPLICATE_DEFEXP;
-	for(s=runline->tokens[1].str;*s;++s)
-	{
-		if (strchr(INVALID_NAME_CHARS,*s))
-			return ERR_INVALID_DEFEXP_NAME;
-	}
+	if (getVariable(name)) return ERR_VAR_ALREADY_HAS_NAME;
+
+	/* Same naming rules as variables */
+	if (!validVariableName(runline->tokens[1].str))
+		return ERR_INVALID_DEFEXP_NAME;
 	
 	assert((exp = (st_defexp *)malloc(sizeof(st_defexp))));
 	exp->name = strdup(name);
@@ -66,6 +65,16 @@ void resetTokenExps(st_defexp *exp)
 		for(i=0;i < rl->num_tokens;++i)
 			if (rl->tokens[i].exp == exp) rl->tokens[i].exp = NULL;
 	}
+}
+
+
+
+
+void renameDefExp(st_defexp *exp, char *new_name)
+{
+	free(exp->name);
+	exp->name = strdup(new_name);
+	assert(exp->name);
 }
 
 

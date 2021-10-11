@@ -15,12 +15,19 @@ CEIL(<number>)
 
 Return the nearest integer value above the number. eg:
 
-  PRINT ceil(0.8)
+Eg:
+] print ceil(0.8)
+1
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 FLOOR(<number>)
 
-Return the nearest integer value below the number.
+Return the nearest integer value below the number. Essentially it just returns
+the number minus the part to the right of the floating point.
+
+Eg:
+] print floor(1.23)
+1
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 HYPOT (<number>,<number>)
@@ -430,14 +437,14 @@ format is identical to the one used by the C strftime() function and its man
 page goes into great detail about all the formatting codes. eg:
 
    10 WHILE 1
-   20     PRINT date$(time(),"%Y-%m-%d %H-%M-%S")
+   20     PRINT date$(time(),"%Y-%m-%d %H:%M:%S")
    30     SLEEP 1
    40 WEND 
 
 Output is in local time unless the character 'U' is placed at the beginning
 of the string in which case the output will be in UTC. eg:
 
-PRINT date$(time(),"U%Y-%m-%d %H-%M-%S")
+PRINT date$(time(),"U%Y-%m-%d %H:%M:%S")
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 DATETOSECS(<date string>,<format string>)
@@ -448,8 +455,8 @@ If the format does not match the date an invalid argument error is returned.
 Also as above a 'U' at the start of the format indicates the time is in UTC.
 eg:
 
-   PRINT datetosecs("2016-01-13 16-42-59","%Y-%m-%d %H-%M-%S")
-   PRINT datetosecs("2016-01-13 16-42-59","U%Y-%m-%d %H-%M-%S")
+   PRINT datetosecs("2016-01-13 16-42-59","%Y-%m-%d %H:%M:%S")
+   PRINT datetosecs("2016-01-13 16-42-59","U%Y-%m-%d %H:%M:%S")
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 TIME()
@@ -682,6 +689,9 @@ each SELECT call). eg:
 
 See the programs/pipes2.bas, tcp_client.bas and tcp_server.bas programs
 for more information.
+
+This function sets the $interrupted system variable to 0 before it starts.
+
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 

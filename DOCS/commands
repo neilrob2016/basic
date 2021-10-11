@@ -102,6 +102,24 @@ takes no arguments.
 do DELETE TO END.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RENAME <old variable/defexp name> TO <new variable/defexp name>
+
+This will change the name of the given variable or defined expression through 
+the entire program.
+
+eg:
+] new
+READY
+] 10 abc = 1
+] 20 abc = abc + 1
+] rename abc to def
+3 renamings.
+] list
+   10 def = 1
+   20 def = def + 1
+] 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 RENUM 
 RENUM <line number spacing>
 RENUM <line number spacing> FROM <start line>
@@ -361,6 +379,15 @@ m("one") = 1
 m("two") = "deux"
 DELKEY m,"two"
 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+STON
+STOFF
+
+These switch strict mode on and off respectively and override the -s command
+line setting. If strict mode is all all variables must be DIMensioned before
+being assigned a value.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 Data
 ===============================================================================
@@ -632,6 +659,7 @@ CINPUT [#<stream>],<var>[,<timeout in seconds>]
 This reads one character of input from stdin or a stream if given. If a timeout
 is given it will wait for that length of time until returning if no character
 is entered. If no timeout is given it will just wait until a key is pressed.
+This resets the $interrupted system variable to 0 before it starts.
 
 eg:
 
@@ -676,6 +704,11 @@ This inputs an entire line from stdin or a stream - \n is the terminator. eg:
    20 PRINT "What is your name> ";
    30 INPUT name
    40 PRINT "Your name is ",name
+
+This resets the $interrupted system variable to 0 before it starts. Note that
+if this command is interrupted any text typed so far is lost. Until this is
+fixed you'll need to use CINPUT and construct your own string character by
+charecter if this is a problem.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 PDIR  [<directory path>]
@@ -878,6 +911,8 @@ of its name. eg:
    40     PRINT "Height at ",ang," degs = ",!height
    50 NEXT 
 
+Expressions cannot have the same name as a variable.
+
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 EVAL <expression>[,<expression> * N]
 
@@ -905,9 +940,19 @@ Switches the trigometric functions into radians mode.
 
 
 
+Processes
+===============================================================================
+KILLALL
+
+This will send SIGKILL to all child processes as shown in the $processes
+system array.
+
+
+
 Error handling
 ===============================================================================
-ON ERROR GOTO <line>/GOSUB <line>/CONT/BREAK
+ON ERROR GOTO/GOSUB <line>
+ON ERROR CONT/BREAK
 
 This command construct allows you to set the behaviour when a BASIC error
 occurs (note - not a unix error in a function). If you use the GOTO/GOSUB
@@ -922,18 +967,10 @@ To reset back to default behaviour use "ON ERROR BREAK". eg:
   100 PRINT "Error  = ",error$($error)," (",$error,")"
   110 RETURN 
 
-
-Processes
-===============================================================================
-KILLALL
-
-This will send SIGKILL to all child processes as shown in the $processes
-system array.
-
-
 Miscellanious
 ===============================================================================
-ON BREAK GOTO <line>/GOSUB <line>/CONT/BREAK/CLEAR
+ON BREAK GOTO/GOSUB <line>
+ON BREAK CONT/BREAK/CLEAR
 
 This works in the same way as ON ERROR except it sets the behaviour for when
 Control-C is pressed in an attempt to interrupt the program. Be careful using
@@ -960,6 +997,16 @@ CONT : This prevents the program terminating. It resets any GOTO/GOSUB jump
 CLEAR: This deletes all user variables which can be useful if you don't wish
        values to be seen upon termination or wish a FOR loop to restart. It 
        works in conjunction with other ON BREAK options.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ON TERMSIZE GOTO/GOSUB <line>
+ON TERMSIZE CONT
+
+As the other ON commands except that it happens when the terminal size is
+changed. Note that once a jump line is set INPUT and SLEEP will be interrupted
+when a size change occurs and you'll have to account for this in your code.
+
+See: programs/termsize.bas
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 DUMP/DUMPC  [<var/exp pattern>[,<var/exp pattern> * N]]

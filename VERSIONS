@@ -204,3 +204,11 @@ October 2021
 - Fixed bug that allowed variables and DEFEXPs to have the same name.
 - Changed the text of some error messages to make them clearer.
 - Removed no longer used error ERR_INVALID_ASSIGNMENT
+
+
+September 2022
+==============
+1.7.1
+- Added EXP, EXP2 and EXP10 functions.
+- Got rid of duplicate declaration build errors on newer versions of GCC.
+- Tidied up globals.h and other minor code updates.

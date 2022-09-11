@@ -8,11 +8,6 @@
 #error "The NO_CRYPT and DES_ONLY build options are mutually exclusive"
 #endif
 
-/* Hopefully they'll sort this one day */
-#ifdef __APPLE__
-#define DES_ONLY
-#endif
-
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,9 +45,22 @@
 
 #include "build_date.h"
 
+/********************************* MACROS ********************************/
+
+/* Hopefully they'll sort this one day */
+#ifdef __APPLE__
+#define DES_ONLY
+#endif
+
+#ifdef MAINFILE
+#define EXTERN 
+#else
+#define EXTERN extern
+#endif
+
 #define INTERPRETER "NRJ-BASIC"
-#define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2021"
-#define VERSION     "1.7.0"
+#define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2022"
+#define VERSION     "1.7.1"
 
 #define STDIN  0
 #define STDOUT 1
@@ -111,6 +119,8 @@
 #define FILE_EXT     ".bas"
 #define FILE_EXT_LEN 4
 
+#define NUM_F_KEYS  5
+#define DEFMOD_SIZE (255 + NUM_F_KEYS)
 
 /********************************* STRUCTURES ********************************/
 
@@ -274,60 +284,7 @@ typedef struct
 } st_keybline;
 
 
-/******************************** ENUMS & ARRAYS *****************************/
-
-enum
-{
-	VAL_UNDEF,
-	VAL_NUM,
-	VAL_STR,
-	VAL_BOTH  /* Only used for functions */
-};
-
-
-enum
-{
-	VAR_STD,
-	VAR_MAP,
-	VAR_MEM,
-
-	NUM_VAR_TYPES
-};
-
-
-enum
-{
-	NOT_NUM,
-	NUM_BIN,
-	NUM_OCT,
-	NUM_HEX,
-	NUM_INT,
-	NUM_FLOAT,
-
-	NUM_NUM_TYPES
-};
-
-
-enum
-{
-	TOK_UNDEF,
-	TOK_VAR,
-	TOK_STR,
-	TOK_NUM,
-	TOK_OP,
-	TOK_COM,
-	TOK_FUNC,
-	TOK_DEFEXP
-};
-
-
-enum
-{
-	TRACING_OFF,
-	TRACING_NOSTEP,
-	TRACING_STEP
-};
-
+/********************************** ERRORS ********************************/
 
 enum
 {
@@ -749,6 +706,7 @@ enum
 };
 
 
+/* Declare the command functions */
 #define DECL_COM(F) int com##F(int comnum, struct st_runline *runline);
 
 DECL_COM(Default)
@@ -978,6 +936,17 @@ st_com command[NUM_COMMANDS] =
 extern st_com command[NUM_COMMANDS];
 #endif
 
+/************************* VALUE TYPES & FUNCTIONS ***************************/
+
+enum
+{
+	VAL_UNDEF,
+	VAL_NUM,
+	VAL_STR,
+	VAL_BOTH  /* Only used for functions */
+};
+
+
 enum
 {
 	/* 0 */
@@ -1123,13 +1092,15 @@ enum
 	/* 100 */
 	FUNC_HAVEDATA,
 	FUNC_REGMATCH,
+	FUNC_EXP,
+	FUNC_EXP2,
+	FUNC_EXP10,
 
 	NUM_FUNCTIONS
 };
 
 
-/******************************** FUNCTIONS ********************************/
-
+/* Declare the C functions for the BASIC functions */
 #define DECL_FUNC(F) \
 	int func##F(int func, st_var **var, st_value *vallist, st_value *result);
 
@@ -1144,6 +1115,7 @@ DECL_FUNC(Trig1)
 DECL_FUNC(Trig2)
 DECL_FUNC(Log)
 DECL_FUNC(Hypot)
+DECL_FUNC(Exp)
 DECL_FUNC(Parity)
 DECL_FUNC(MaxMin)
 DECL_FUNC(Asc)
@@ -1362,11 +1334,16 @@ st_func function[NUM_FUNCTIONS] =
 
 	/* 100 */
 	{ "HAVEDATA",       0, { VAL_UNDEF }, funcHaveData },
-	{ "REGMATCH",       2, { VAL_STR,VAL_STR }, funcRegMatch }
+	{ "REGMATCH",       2, { VAL_STR,VAL_STR }, funcRegMatch },
+	{ "EXP",            1, { VAL_NUM }, funcExp },
+	{ "EXP2",           1, { VAL_NUM }, funcExp },
+	{ "EXP10",          1, { VAL_NUM }, funcExp }
 };
 #else
 extern st_func function[NUM_FUNCTIONS];
 #endif
+
+/******************************** OPERATORS ********************************/
 
 enum
 {
@@ -1463,7 +1440,52 @@ st_op op_info[NUM_OPS] =
 extern st_op op_info[NUM_OPS];
 #endif
 
-/* Keyboard escape sequences */
+/******************************** MISC ENUMS ******************************/
+
+enum
+{
+	VAR_STD,
+	VAR_MAP,
+	VAR_MEM,
+
+	NUM_VAR_TYPES
+};
+
+
+enum
+{
+	NOT_NUM,
+	NUM_BIN,
+	NUM_OCT,
+	NUM_HEX,
+	NUM_INT,
+	NUM_FLOAT,
+
+	NUM_NUM_TYPES
+};
+
+
+enum
+{
+	TOK_UNDEF,
+	TOK_VAR,
+	TOK_STR,
+	TOK_NUM,
+	TOK_OP,
+	TOK_COM,
+	TOK_FUNC,
+	TOK_DEFEXP
+};
+
+
+enum
+{
+	TRACING_OFF,
+	TRACING_NOSTEP,
+	TRACING_STEP
+};
+
+
 enum
 {
 	/* 0 */
@@ -1499,50 +1521,96 @@ enum
 	NUM_ESC_SEQS
 };
 
-#define NUM_F_KEYS 5
-#define DEFMOD_SIZE (255 + NUM_F_KEYS)
 
-#ifdef MAINFILE
-char *esc_seq[NUM_ESC_SEQS] =
-{
-	/* 0 */
-	"k",
-	"j",
-	"[A",
-	"[B",
-	"[D",
+/*********************************** GLOBALS *********************************/
 
-	/* 5 */
-	"[C",
-	"[2~",
-	"[3~",
-	"[5~",
+EXTERN struct termios saved_tio;
+EXTERN st_keybline *keyb_line;
 
-	/* 10 */
-	"[6~",
-	"[[A",
-	"[[B",
-	"[[C",
-	"[[D",
+EXTERN st_progline *prog_first_line;
+EXTERN st_progline *on_error_goto;
+EXTERN st_progline *on_error_gosub;
+EXTERN st_progline *on_break_goto;
+EXTERN st_progline *on_break_gosub;
+EXTERN st_progline *on_termsize_goto;
+EXTERN st_progline *on_termsize_gosub;
 
-	/* 15 */
-	"[[E",
-	"OP",
-	"OQ",
-	"OR",
-	"OS",
+EXTERN st_runline *return_stack[MAX_RETURN_STACK];
+EXTERN st_runline *prog_new_runline;
+EXTERN st_runline *interrupted_runline;
+EXTERN st_runline *data_runline;
+EXTERN st_runline *data_autorestore_runline;
 
-	/* 20 */
-	"[15~"
-};
-char *defmod[DEFMOD_SIZE];
-#else
-extern char *esc_seq[NUM_ESC_SEQS];
-extern char *defmod[DEFMOD_SIZE];
-#endif
+EXTERN st_var *first_var[256];
+EXTERN st_var *last_var[256];
+EXTERN st_var *build_options_var;
+EXTERN st_var *error_var;
+EXTERN st_var *syserror_var;
+EXTERN st_var *reserror_var;
+EXTERN st_var *prog_line_var;
+EXTERN st_var *error_line_var;
+EXTERN st_var *break_line_var;
+EXTERN st_var *data_line_var;
+EXTERN st_var *eof_var;
+EXTERN st_var *pid_var;
+EXTERN st_var *ppid_var;
+EXTERN st_var *uid_var;
+EXTERN st_var *gid_var;
+EXTERN st_var *term_cols_var;
+EXTERN st_var *term_rows_var;
+EXTERN st_var *run_arg_var;
+EXTERN st_var *angle_mode_var;
+EXTERN st_var *processes_var;
+EXTERN st_var *kilobyte_var;
+EXTERN st_var *indent_var;
+EXTERN st_var *strict_mode_var;
+EXTERN st_var *interrupted_var;
 
+EXTERN st_defexp *first_defexp;
+EXTERN st_defexp *last_defexp;
 
-/*************************** OTHER FORWARD DECLARATIONS **********************/
+EXTERN pid_t *process_list;
+
+EXTERN char *sorted_commands[NUM_COMMANDS];
+EXTERN char *sorted_functions[NUM_FUNCTIONS];
+EXTERN char *defmod[DEFMOD_SIZE];
+EXTERN char **watch_vars;
+EXTERN char *cmdline_run_arg;
+EXTERN char build_options[100];
+
+EXTERN bool on_break_clear;
+EXTERN bool prog_new_runline_set;
+EXTERN bool autorun;
+EXTERN bool executing;
+EXTERN bool listing_line_wrap;
+EXTERN bool on_break_cont;
+EXTERN bool on_error_cont;
+EXTERN bool draw_prompt;
+EXTERN bool child_process;
+EXTERN bool angle_in_degrees;
+
+EXTERN int kilobyte;
+EXTERN int processes_cnt;
+EXTERN int tracing_mode;
+EXTERN int strict_mode;
+EXTERN int num_keyb_lines;
+EXTERN int data_pc;
+EXTERN int return_stack_cnt;
+EXTERN int next_keyb_line;
+EXTERN int keyb_lines_free;
+EXTERN int basic_argc_start;
+EXTERN int term_rows;
+EXTERN int term_cols;
+EXTERN int indent_spaces;
+EXTERN int last_signal;
+EXTERN int watch_alloc;
+EXTERN int watch_cnt;
+EXTERN int stream[MAX_STREAMS];
+
+EXTERN FILE *popen_fp[MAX_STREAMS];
+EXTERN DIR *dir_stream[MAX_DIR_STREAMS];
+
+/**************************** FORWARD DECLARATIONS **************************/
 
 /* keyboard.c */
 void rawMode();
@@ -1686,89 +1754,3 @@ void   prompt();
 char   pressAnyKey(char *msg);
 void   doExit(int code);
 
-/*********************************** GLOBALS *********************************/
-
-struct termios saved_tio;
-st_keybline *keyb_line;
-
-st_progline *prog_first_line;
-st_progline *on_error_goto;
-st_progline *on_error_gosub;
-st_progline *on_break_goto;
-st_progline *on_break_gosub;
-st_progline *on_termsize_goto;
-st_progline *on_termsize_gosub;
-
-st_runline *return_stack[MAX_RETURN_STACK];
-st_runline *prog_new_runline;
-st_runline *interrupted_runline;
-st_runline *data_runline;
-st_runline *data_autorestore_runline;
-
-st_var *first_var[256];
-st_var *last_var[256];
-st_var *build_options_var;
-st_var *error_var;
-st_var *syserror_var;
-st_var *reserror_var;
-st_var *prog_line_var;
-st_var *error_line_var;
-st_var *break_line_var;
-st_var *data_line_var;
-st_var *eof_var;
-st_var *pid_var;
-st_var *ppid_var;
-st_var *uid_var;
-st_var *gid_var;
-st_var *term_cols_var;
-st_var *term_rows_var;
-st_var *run_arg_var;
-st_var *angle_mode_var;
-st_var *processes_var;
-st_var *kilobyte_var;
-st_var *indent_var;
-st_var *strict_mode_var;
-st_var *interrupted_var;
-
-st_defexp *first_defexp;
-st_defexp *last_defexp;
-
-pid_t *process_list;
-
-char *sorted_commands[NUM_COMMANDS];
-char *sorted_functions[NUM_FUNCTIONS];
-char **watch_vars;
-char *cmdline_run_arg;
-char build_options[100];
-
-bool on_break_clear;
-bool prog_new_runline_set;
-bool autorun;
-bool executing;
-bool listing_line_wrap;
-bool on_break_cont;
-bool on_error_cont;
-bool draw_prompt;
-bool child_process;
-bool angle_in_degrees;
-
-int kilobyte;
-int processes_cnt;
-int tracing_mode;
-int strict_mode;
-int num_keyb_lines;
-int data_pc;
-int return_stack_cnt;
-int next_keyb_line;
-int keyb_lines_free;
-int basic_argc_start;
-int term_rows;
-int term_cols;
-int indent_spaces;
-int last_signal;
-int watch_alloc;
-int watch_cnt;
-int stream[MAX_STREAMS];
-
-FILE *popen_fp[MAX_STREAMS];
-DIR *dir_stream[MAX_DIR_STREAMS];

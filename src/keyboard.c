@@ -467,6 +467,38 @@ void rightCursor(st_keybline *line)
 /*** Returns escape seq number or result code ***/
 int getEscapeSeq(char *seq, int len)
 {
+	static char *esc_seq[NUM_ESC_SEQS] =
+	{
+		/* 0 */
+		"k",
+		"j",
+		"[A",
+		"[B",
+		"[D",
+
+		/* 5 */
+		"[C",
+		"[2~",
+		"[3~",
+		"[5~",
+
+		/* 10 */
+		"[6~",
+		"[[A",
+		"[[B",
+		"[[C",
+		"[[D",
+
+		/* 15 */
+		"[[E",
+		"OP",
+		"OQ",
+		"OR",
+		"OS",
+
+		/* 20 */
+		"[15~"
+	};
 	int i;
 
 	for(i=0;i < NUM_ESC_SEQS;++i)

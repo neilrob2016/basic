@@ -4,7 +4,8 @@
    instead */
 #define INDEX_CHAR(N) (N[0] == '$' ? N[1] : N[0])
 
-char *vartype[NUM_VAR_TYPES] = { "STD","MAP","MEM" };
+static char *vartype[NUM_VAR_TYPES] = { "STD","MAP","MEM" };
+
 void  addVarToList(st_var *var);
 void  removeVarFromList(st_var *var);
 int   checkIndex(st_var *var, int index_cnt, int *index, int *arrpos);

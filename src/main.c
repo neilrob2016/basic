@@ -3,7 +3,7 @@
 
  An old fashioned line BASIC interpreter for Unix.
 
- Copyright (C) Neil Robertson 2016-2021
+ Copyright (C) Neil Robertson 2016-2022
  *****************************************************************************/
 
 #define MAINFILE

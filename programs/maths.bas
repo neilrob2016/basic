@@ -29,9 +29,14 @@
   290 NEXT 
   300 PRINT "--------"
   310 FOR i = 1 TO 8
-  320     p = pow($e,i)
-  330     PRINT "POW(E,",i,") = ",p,", LOG = ",log(p)
+  320     p = exp(i)
+  330     PRINT "EXP2(",i,") = ",exp2(i)
   340 NEXT 
   350 PRINT "--------"
-  360 PRINT "MAX(10,20,3,4) = ",max(10,20,3,4)
-  370 PRINT "MIN(10,20,3,4) = ",min(10,20,3,4)
+  360 FOR i = 1 TO 8
+  370     p = pow($e,i)
+  380     PRINT "POW(E,",i,") = ",p,", LOG = ",log(p)
+  390 NEXT 
+  400 PRINT "--------"
+  410 PRINT "MAX(10,20,3,4) = ",max(10,20,3,4)
+  420 PRINT "MIN(10,20,3,4) = ",min(10,20,3,4)

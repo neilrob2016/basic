@@ -93,7 +93,7 @@
   930         ' 
   940         ' Add perspective             
   950         ' 
-  960         mult = pow(10,draw_sq_z(i) / horizon_dist)
+  960         mult = exp10(draw_sq_z(i) / horizon_dist)
   970         draw_sq_x(i) = draw_sq_x(i) * mult
   980         draw_sq_y(i) = draw_sq_y(i) * mult
   990     NEXT 

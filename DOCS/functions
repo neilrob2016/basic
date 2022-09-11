@@ -20,6 +20,20 @@ Eg:
 1
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+EXP(<power>)
+EXP2(<power>)
+EXP10(<power>)
+
+These return $e, 2 and 10 to the given power respectively. Underneath they 
+call the C exp*() functions which are more efficient than using pow().
+
+Eg:
+] print exp(10)
+22026.465795
+] print pow($e,10)
+22026.465795
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 FLOOR(<number>)
 
 Return the nearest integer value below the number. Essentially it just returns

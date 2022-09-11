@@ -362,6 +362,40 @@ int funcMaxMin(int func, st_var **var, st_value *vallist, st_value *result)
 }
 
 
+
+
+/*** Exponent functions. Apparently more efficient that using pow().
+     Eg: exp2(10) = pow(2,10) ***/
+int funcExp(int func, st_var **var, st_value *vallist, st_value *result)
+{
+	double val;
+
+	switch(func)
+	{
+	case FUNC_EXP:
+		val = exp(vallist[0].dval);
+		break;
+	
+	case FUNC_EXP2:
+		val = exp2(vallist[0].dval);
+		break;
+
+	case FUNC_EXP10:
+#ifdef __APPLE__
+		val = __exp10(vallist[0].dval);
+#else
+		val = exp10(vallist[0].dval);
+#endif
+		break;
+
+	default:
+		assert(0);
+	}
+	setValue(result,VAL_NUM,NULL,val);
+	return OK;
+}
+
+
 /******************************** VARIABLES ********************************/
 
 int funcArrSize(int func, st_var **var, st_value *vallist, st_value *result)
@@ -2232,7 +2266,7 @@ int funcCryptStr(int func, st_var **var, st_value *vallist, st_value *result)
 #ifdef NO_CRYPT
 	return ERR_UNAVAILABLE;
 #else
-	char *etype[4] = { "DES","MD5","SHA256","SHA512" };
+	static char *etype[4] = { "DES","MD5","SHA256","SHA512" };
 	char *salt;
 	int add;
 	int i;

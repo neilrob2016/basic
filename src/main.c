@@ -13,14 +13,12 @@
 
 char *filename;
 
-void setBuildOptions();
-void parseCmdLine(int argc, char **argv);
-void init();
-void rawMode();
-void mainloop();
-void processLine(st_progline *progline);
-void sigHandler(int sig);
-void getTermSize(int sig);
+static void setBuildOptions();
+static void parseCmdLine(int argc, char **argv);
+static void init();
+static void mainloop();
+static void sigHandler(int sig);
+static void getTermSize(int sig);
 
 
 /*********************************** START *********************************/
@@ -53,8 +51,9 @@ int main(int argc, char **argv, char **env)
 
 
 
+/********************************* STATICS *********************************/
 
-void setBuildOptions()
+static void setBuildOptions()
 {
 	build_options[0] = 0;
 #ifdef LINE_FLOAT_ALGO
@@ -76,7 +75,7 @@ void setBuildOptions()
 
 
 
-void parseCmdLine(int argc, char **argv)
+static void parseCmdLine(int argc, char **argv)
 {
 	int i;
 
@@ -103,7 +102,7 @@ void parseCmdLine(int argc, char **argv)
 			++num_keyb_lines;
 			break;		
 			
-		case 'p':
+		case 'l':
 			if (++i == argc) goto USAGE;
 			filename = argv[i];
 			break;
@@ -146,7 +145,7 @@ void parseCmdLine(int argc, char **argv)
 
 	USAGE:
 	printf("Usage: %s\n"
-	       "       -p <.bas file> : BASIC program file.\n"
+	       "       -l <.bas file> : BASIC program file to load at startup.\n"
 	       "       -h <lines>     : Number of history lines. Default = %d\n"
 	       "       -r <run arg>   : Sets _run_arg system variable.\n"
 	       "       -a             : Autorun program.\n"
@@ -165,7 +164,7 @@ void parseCmdLine(int argc, char **argv)
 
 
 
-int qsortCompare(const void *p1, const void *p2)
+static int qsortCompare(const void *p1, const void *p2)
 {
 	/* p1 and p2 are actually point to (char **), not (char *) */
 	return strcmp(*(char **)p1, *(char **)p2);
@@ -174,7 +173,7 @@ int qsortCompare(const void *p1, const void *p2)
 
 
 
-void init()
+static void init()
 {
 	int size;
 	int i;
@@ -222,7 +221,7 @@ void init()
 
 
 
-void mainloop()
+static void mainloop()
 {
 	char *line;
 
@@ -252,7 +251,7 @@ void mainloop()
 
 
 
-void sigHandler(int sig)
+static void sigHandler(int sig)
 {
 	last_signal = sig;
 
@@ -266,7 +265,7 @@ void sigHandler(int sig)
 
 
 
-void getTermSize(int sig)
+static void getTermSize(int sig)
 {
 #ifdef TIOCGWINSZ
 	struct winsize ws;

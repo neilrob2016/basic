@@ -1,11 +1,11 @@
 #include "globals.h"
 
-int  prevKeyLine(int l);
-int  nextKeyLine(int l);
-void copyKeyLine(int from, int to);
-void drawKeyLineSection(char *from, char *to);
-void clearScreenLine(int l);
-bool copyHistoricCommand(int input_pos);
+static int  prevKeyLine(int l);
+static int  nextKeyLine(int l);
+static void copyKeyLine(int from, int to);
+static void drawKeyLineSection(char *from, char *to);
+static void clearScreenLine(int l);
+static bool copyHistoricCommand(int input_pos);
 
 void rawMode()
 {
@@ -213,39 +213,6 @@ bool getLine(char **line)
 
 
 
-int prevKeyLine(int l)
-{
-	int i;
-	int pos;
-
-	for(i=1;i < num_keyb_lines;++i)
-	{
-		pos = l - i;
-		if (pos < 0) pos += num_keyb_lines;
-		if (keyb_line[pos].len) return pos;
-	}
-	return l;
-}
-
-
-
-
-int nextKeyLine(int l)
-{
-	int i;
-	int pos;
-
-	for(i=1;i < num_keyb_lines;++i)
-	{
-		pos = (l + i) % num_keyb_lines;
-		if (keyb_line[pos].len) return pos;
-	}
-	return l;
-}
-
-
-
-
 void clearKeyLine(int l)
 {
 	st_keybline *line = &keyb_line[l];
@@ -382,25 +349,6 @@ void delCharFromKeyLine(st_keybline *line, bool move_cursor)
 
 
 
-void copyKeyLine(int from, int to)
-{
-	st_keybline *fromline = &keyb_line[from];
-	st_keybline *toline = &keyb_line[to];
-
-	clearKeyLine(to);
-	if (fromline->len)
-	{
-		toline->len = fromline->len;
-		toline->cursor_pos = fromline->cursor_pos;
-		toline->alloced = strlen(fromline->str) + 1;
-		toline->str = strdup(fromline->str);
-		assert(toline->str);
-	}
-}
-
-
-
-
 void drawKeyLine(int l)
 {
 	st_keybline *line = &keyb_line[l];
@@ -411,30 +359,6 @@ void drawKeyLine(int l)
 		PRINT(line->str,line->len);
 		for(i=line->len;i > line->cursor_pos;--i) PRINT("\b",1);
 	}
-}
-
-
-
-
-void drawKeyLineSection(char *from, char *to)
-{
-	char *s;
-	for(s=from;s <= to;++s) PRINT(s,1);
-	PRINT(" ",1);  /* Overwrite last char for delete */
-	for(;s > from;--s) PRINT("\b",1);
-}
-
-
-
-
-void clearScreenLine(int l)
-{
-	int i;
-	PRINT("\r",1);
-	prompt();
-	for(i=0;i < keyb_line[l].len;++i) PRINT(" ",1);
-	PRINT("\r",1);
-	prompt();
 }
 
 
@@ -514,11 +438,87 @@ int getEscapeSeq(char *seq, int len)
 }
 
 
+/********************************* STATICS **********************************/
+
+static int prevKeyLine(int l)
+{
+	int i;
+	int pos;
+
+	for(i=1;i < num_keyb_lines;++i)
+	{
+		pos = l - i;
+		if (pos < 0) pos += num_keyb_lines;
+		if (keyb_line[pos].len) return pos;
+	}
+	return l;
+}
+
+
+
+
+static int nextKeyLine(int l)
+{
+	int i;
+	int pos;
+
+	for(i=1;i < num_keyb_lines;++i)
+	{
+		pos = (l + i) % num_keyb_lines;
+		if (keyb_line[pos].len) return pos;
+	}
+	return l;
+}
+
+
+
+
+static void copyKeyLine(int from, int to)
+{
+	st_keybline *fromline = &keyb_line[from];
+	st_keybline *toline = &keyb_line[to];
+
+	clearKeyLine(to);
+	if (fromline->len)
+	{
+		toline->len = fromline->len;
+		toline->cursor_pos = fromline->cursor_pos;
+		toline->alloced = strlen(fromline->str) + 1;
+		toline->str = strdup(fromline->str);
+		assert(toline->str);
+	}
+}
+
+
+
+
+static void drawKeyLineSection(char *from, char *to)
+{
+	char *s;
+	for(s=from;s <= to;++s) PRINT(s,1);
+	PRINT(" ",1);  /* Overwrite last char for delete */
+	for(;s > from;--s) PRINT("\b",1);
+}
+
+
+
+
+static void clearScreenLine(int l)
+{
+	int i;
+	PRINT("\r",1);
+	prompt();
+	for(i=0;i < keyb_line[l].len;++i) PRINT(" ",1);
+	PRINT("\r",1);
+	prompt();
+}
+
+
 
 
 /*** If a user does !<number> we copy the numbered historic command into the
      keyboard buffer to run ***/
-bool copyHistoricCommand(int input_pos)
+static bool copyHistoricCommand(int input_pos)
 {
 	int pos;
 	int histnum;

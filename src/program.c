@@ -1,11 +1,11 @@
 #include "globals.h"
 
-#define PROGRESS_DOT_LINES 10
+#define PROGRESS_LINES 10
 
-int  addProgLine(st_progline *progline);
-void removeProgLine(st_progline *progline);
-void resetProgPointers();
-void spacePad(FILE *fp, int len);
+static int  addProgLine(st_progline *progline);
+static void removeProgLine(st_progline *progline);
+static void resetProgPointers();
+static void spacePad(FILE *fp, int len);
 
 
 /*** Called at startup, when a program is deleted, new'd or re-run ***/
@@ -155,74 +155,6 @@ bool processProgLine(st_progline *progline)
 
 
 
-/*** Put the program line into the program linked list but also attach the
-     runlines into their linked list (the entire program) too */
-int addProgLine(st_progline *progline)
-{
-	st_progline *pl;
-	st_progline *pl_prev;
-
-	if (progline->linenum < 1) return ERR_INVALID_LINENUM;
-
-	/* Find nearest line number */
-	for(pl=prog_first_line,pl_prev=NULL;
-	    pl && pl->linenum < progline->linenum;pl_prev=pl,pl=pl->next);
-
-	/* If we have a nearest line ... */
-	if (pl)
-	{
-		if (pl->prev) pl->prev->next = progline;
-		progline->prev = pl->prev;
-
-		if (pl->linenum == progline->linenum)
-		{
-			/* Replace line */
-			if (pl->next) pl->next->prev = progline;
-			progline->next = pl->next;
-
-			if (prog_first_line == pl)
-				prog_first_line = progline;
-
-			deleteProgLine(pl,FALSE,TRUE);
-		}
-		else
-		{
-			/* Insert line */
-			progline->next = pl;
-			pl->prev = progline;
-		}
-		if (pl == prog_first_line) prog_first_line = progline;
-	}
-	else if (pl_prev)
-	{
-		/* Just add to end */
-		pl_prev->next = progline;
-		progline->prev = pl_prev;
-	}
-	else prog_first_line = progline;
-
-	/* Link up the runlines to those in the program lines either side */
-	if (progline->prev)
-	{
-		progline->first_runline->prev = progline->prev->last_runline;
-		progline->prev->last_runline->next = progline->first_runline;
-	}
-
-	if (progline->next)
-	{
-		progline->last_runline->next = progline->next->first_runline;
-		progline->next->first_runline->prev = progline->last_runline;
-	}
-
-	/* Could have added a new NEXT, WEND etc so reset */
-	resetProgPointers();
-
-	return OK;
-}
-
-
-
-
 st_progline *getProgLine(u_int linenum)
 {
 	st_progline *pl;
@@ -348,55 +280,6 @@ void setNewRunLine(st_runline *runline)
 
 
 
-/*** Update linked list pointers either side of the line ***/
-void removeProgLine(st_progline *progline)
-{
-	if (progline->prev)
-	{
-		progline->prev->next = progline->next;
-		progline->first_runline->prev->next = progline->last_runline->next;
-	}
-	if (progline->next)
-	{
-		progline->next->prev = progline->prev;
-		progline->next->first_runline->prev = progline->first_runline->prev;
-	}
-	if (progline == prog_first_line)
-		prog_first_line = prog_first_line->next;
-
-	progline->prev = NULL;
-	progline->next = NULL;
-	progline->first_runline->prev = NULL;
-	progline->last_runline->next = NULL;
-}
-
-
-
-
-/*** Reset jump pointers and delete any for loop structs ***/
-void resetProgPointers()
-{
-	st_runline *runline;
-	int i;
-
-	if (!prog_first_line) return;
-
-	for(runline=prog_first_line->first_runline;
-	    runline;runline=runline->next)
-	{
-		FREE(runline->for_loop);
-		FREE(runline->foreach_loop);
-		runline->jump = NULL;
-		runline->else_jump = NULL;
-		runline->next_case = NULL;
-		for(i=0;i < runline->num_tokens;++i)
-			runline->tokens[i].lazy_jump = 0;
-	}
-}
-
-
-
-
 /*** Load a program from disk. Will also load and run direct commands in the
      file too ***/
 int loadProgram(char *filename, u_int merge_linenum, bool delprog)
@@ -419,12 +302,12 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 	/* Add .bas on end if not there */
 	if ((tmp = addFileExtension(filename))) filename = tmp;
 
-	if ((err = getFirstFileMatch(S_IFREG,filename,matchpath,0)) != OK)
+	if ((err = matchPath(S_IFREG,filename,matchpath,TRUE)) != OK)
 		goto ERROR;
 	
 	if (!autorun)
 	{
-		printf("LOADING: %s",matchpath);
+		printf("LOADING \"%s\": ",matchpath);
 		fflush(stdout);
 	}
 	if (!(fp = fopen(matchpath,"r")))
@@ -458,8 +341,8 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 		/* EOL or EOF */
 		if (!ret || line[len] == '\n')
 		{
-			if (!autorun && !(++linecnt % PROGRESS_DOT_LINES))
-				PRINT(".",1);
+			if (!autorun && !(++linecnt % PROGRESS_LINES))
+				PRINT("=",1);
 
 			if (ret) line[len] = 0;
 			if (line[0])
@@ -549,6 +432,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 	loop_indent = 0;
 	linecnt = 0;
 	pause_linecnt = 0;
+	prev_tok_was_com = 0;
 
 	for(progline=prog_first_line;
 	    progline && (!to || progline->linenum <= to) && last_signal != SIGINT;
@@ -774,8 +658,8 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 		}
 		if (print_line)
 		{
-			if (fp != stdout && !(++linecnt % PROGRESS_DOT_LINES))
-				PRINT(".",1);
+			if (fp != stdout && !(++linecnt % PROGRESS_LINES))
+				PRINT("=",1);
 			fputc('\n',fp);
 		}
 	}
@@ -868,8 +752,127 @@ int renameProgVarsAndDefExps(char *from, char *to, int *cnt)
 
 
 
+/********************************* STATICS **********************************/
 
-void spacePad(FILE *fp, int len)
+
+/*** Put the program line into the program linked list but also attach the
+     runlines into their linked list (the entire program) too */
+static int addProgLine(st_progline *progline)
+{
+	st_progline *pl;
+	st_progline *pl_prev;
+
+	if (progline->linenum < 1) return ERR_INVALID_LINENUM;
+
+	/* Find nearest line number */
+	for(pl=prog_first_line,pl_prev=NULL;
+	    pl && pl->linenum < progline->linenum;pl_prev=pl,pl=pl->next);
+
+	/* If we have a nearest line ... */
+	if (pl)
+	{
+		if (pl->prev) pl->prev->next = progline;
+		progline->prev = pl->prev;
+
+		if (pl->linenum == progline->linenum)
+		{
+			/* Replace line */
+			if (pl->next) pl->next->prev = progline;
+			progline->next = pl->next;
+
+			if (prog_first_line == pl)
+				prog_first_line = progline;
+
+			deleteProgLine(pl,FALSE,TRUE);
+		}
+		else
+		{
+			/* Insert line */
+			progline->next = pl;
+			pl->prev = progline;
+		}
+		if (pl == prog_first_line) prog_first_line = progline;
+	}
+	else if (pl_prev)
+	{
+		/* Just add to end */
+		pl_prev->next = progline;
+		progline->prev = pl_prev;
+	}
+	else prog_first_line = progline;
+
+	/* Link up the runlines to those in the program lines either side */
+	if (progline->prev)
+	{
+		progline->first_runline->prev = progline->prev->last_runline;
+		progline->prev->last_runline->next = progline->first_runline;
+	}
+
+	if (progline->next)
+	{
+		progline->last_runline->next = progline->next->first_runline;
+		progline->next->first_runline->prev = progline->last_runline;
+	}
+
+	/* Could have added a new NEXT, WEND etc so reset */
+	resetProgPointers();
+
+	return OK;
+}
+
+
+
+
+/*** Update linked list pointers either side of the line ***/
+static void removeProgLine(st_progline *progline)
+{
+	if (progline->prev)
+	{
+		progline->prev->next = progline->next;
+		progline->first_runline->prev->next = progline->last_runline->next;
+	}
+	if (progline->next)
+	{
+		progline->next->prev = progline->prev;
+		progline->next->first_runline->prev = progline->first_runline->prev;
+	}
+	if (progline == prog_first_line)
+		prog_first_line = prog_first_line->next;
+
+	progline->prev = NULL;
+	progline->next = NULL;
+	progline->first_runline->prev = NULL;
+	progline->last_runline->next = NULL;
+}
+
+
+
+
+/*** Reset jump pointers and delete any for loop structs ***/
+static void resetProgPointers()
+{
+	st_runline *runline;
+	int i;
+
+	if (!prog_first_line) return;
+
+	for(runline=prog_first_line->first_runline;
+	    runline;runline=runline->next)
+	{
+		FREE(runline->for_loop);
+		FREE(runline->foreach_loop);
+		runline->jump = NULL;
+		runline->else_jump = NULL;
+		runline->next_case = NULL;
+		for(i=0;i < runline->num_tokens;++i)
+			runline->tokens[i].lazy_jump = 0;
+	}
+}
+
+
+
+
+static void spacePad(FILE *fp, int len)
 {
 	int i;
 	for(i=0;i < len;++i) putc(' ',fp);

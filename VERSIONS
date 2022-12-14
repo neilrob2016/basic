@@ -212,3 +212,16 @@ September 2022
 - Added EXP, EXP2 and EXP10 functions.
 - Got rid of duplicate declaration build errors on newer versions of GCC.
 - Tidied up globals.h and other minor code updates.
+
+
+December 2022
+=============
+1.7.2
+- Renamed PATH function to PATH$
+- Renamed disk.c to path.c
+- Renamed procs.c to process.c 
+- "~<user>/" expansion now supported in paths
+- Changed -p command line argument to -l to be the same as Logo
+- Removed strncpy() from the code
+- General code tidying and improvements
+- Makefile bug fix and updates

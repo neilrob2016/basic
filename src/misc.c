@@ -57,6 +57,19 @@ int numType(char *str)
 
 
 
+/*** Alternative to standard strncpy() ***/
+bool copyStr(char *to, char *from, int len)
+{
+	int i;
+	for(i=0;i <= len && *from;++i,++to,++from) *to = *from;
+	if (*from) return FALSE;
+	*to = 0;
+	return TRUE;
+}
+
+
+
+
 void toUpperStr(char *str)
 {
 	char *s;
@@ -219,6 +232,7 @@ char pressAnyKey(char *msg)
 		fflush(stdout);
 		PRINT(msg,len);
 	}
+	else len = 0; /* Avoids gcc warning */
 
 	/* Use select() so we get control-C interrupts */
 	FD_ZERO(&mask);

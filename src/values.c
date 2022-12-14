@@ -1,7 +1,7 @@
 #include "globals.h"
 
 
-void initValue(st_value *val)
+inline void initValue(st_value *val)
 {
 	val->type = VAL_NUM;
 	val->shmid = -1;
@@ -76,8 +76,7 @@ void setValue(st_value *val, int type, char *sval, double dval)
 		if (val->shmid != -1)
 		{
 			if (len > val->shmlen) len = val->shmlen;
-			strncpy(val->sval,sval,len);
-			val->sval[len] = 0;
+			assert(copyStr(val->sval,sval,len));
 		}
 		/* If we can fit the string in the fixed array then do it 
 		   otherwise strdup it */
@@ -140,7 +139,7 @@ void setDirectStringValue(st_value *val, char *sval)
 
 
 
-void copyValue(st_value *to, st_value *from)
+inline void copyValue(st_value *to, st_value *from)
 {
 	setValue(to,from->type,from->sval,from->dval);
 }
@@ -221,7 +220,7 @@ void multStringValue(st_value *val, int cnt)
 
 
 
-bool trueValue(st_value *val)
+inline bool trueValue(st_value *val)
 {
 	return ((val->type == VAL_NUM && val->dval) ||
 	        (val->type == VAL_STR && val->sval && val->sval[0]));

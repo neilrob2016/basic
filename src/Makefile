@@ -4,14 +4,14 @@ CC=cc -D NO_OS_SET
 #LFA=-D LINE_FLOAT_ALGO
 
 # Linux 
-CC=cc $(LFA)
-LIBS=-lm -lcrypt
+#CC=cc $(LFA)
+#LIBS=-lm -lcrypt
 
 # MacOS
-CC=cc $(LFA)
-LIBS=-lm 
+#CC=cc $(LFA)
+#LIBS=-lm 
 
-# Helvar 950 Router
+# ARM
 #CC=aarch64-poky-linux-gcc --sysroot=/opt/fsl-imx-wayland/4.19-warrior/sysroots/aarch64-poky-linux
 
 
@@ -28,8 +28,8 @@ LIBS=-lm
 #LIBS=-lm
 
 # -Wextra produces lots of extranious warnings but can be useful now and then
-#ARGS=-Wall -Wextra -pedantic -c -g
-ARGS=-Wall -pedantic -c -g
+#ARGS=-Wall -Wextra -pedantic -c -g -O
+ARGS=-Wall -pedantic -c -g -O
 OBJS=\
 	main.o \
 	keyboard.o \
@@ -43,71 +43,72 @@ OBJS=\
 	defmod.o \
 	values.o \
 	program.o \
-	disk.o \
+	path.o \
 	draw.o \
 	watch.o \
-	procs.o \
+	process.o \
 	argv.o \
 	misc.o
+DEPS=globals.h Makefile
 
-basic: build_date $(OBJS) Makefile
+basic: $(OBJS) Makefile
 	$(CC) $(OBJS) $(LIBS) -o basic
 
 build_date:
 	echo "#define BUILD_DATE \"`date +'%Y-%m-%d %T %Z'`\"" > build_date.h
 
-main.o: main.c globals.h Makefile
+main.o: main.c $(DEPS) build_date
 	$(CC) $(ARGS) main.c
 
-keyboard.o: keyboard.c globals.h Makefile
+keyboard.o: keyboard.c $(DEPS)
 	$(CC) $(ARGS) keyboard.c
 
-tokeniser.o: tokeniser.c globals.h Makefile
+tokeniser.o: tokeniser.c $(DEPS)
 	$(CC) $(ARGS) tokeniser.c
 
-program.o: program.c globals.h Makefile
+program.o: program.c $(DEPS)
 	$(CC) $(ARGS) program.c
 
-execute.o: execute.c globals.h Makefile
+execute.o: execute.c $(DEPS)
 	$(CC) $(ARGS) execute.c
 
-commands.o: commands.c globals.h Makefile
+commands.o: commands.c $(DEPS)
 	$(CC) $(ARGS) commands.c
 
-functions.o: functions.c globals.h Makefile
+functions.o: functions.c $(DEPS)
 	$(CC) $(ARGS) functions.c
 
-variables.o: variables.c globals.h Makefile
+variables.o: variables.c $(DEPS) build_date
 	$(CC) $(ARGS) variables.c
 
-expressions.o: expressions.c globals.h Makefile
+expressions.o: expressions.c $(DEPS)
 	$(CC) $(ARGS) expressions.c
 
-defexp.o: defexp.c globals.h Makefile
+defexp.o: defexp.c $(DEPS)
 	$(CC) $(ARGS) defexp.c
 
-defmod.o: defmod.c globals.h Makefile
+defmod.o: defmod.c $(DEPS)
 	$(CC) $(ARGS) defmod.c
 
-values.o: values.c globals.h Makefile
+values.o: values.c $(DEPS)
 	$(CC) $(ARGS) values.c
 
-disk.o: disk.c globals.h Makefile
-	$(CC) $(ARGS) disk.c
+path.o: path.c $(DEPS)
+	$(CC) $(ARGS) path.c
 
-draw.o: draw.c globals.h Makefile
+draw.o: draw.c $(DEPS)
 	$(CC) $(ARGS) draw.c
 
-watch.o: watch.c globals.h Makefile
+watch.o: watch.c $(DEPS)
 	$(CC) $(ARGS) watch.c 
 
-procs.o: procs.c globals.h Makefile
-	$(CC) $(ARGS) procs.c 
+process.o: process.c $(DEPS)
+	$(CC) $(ARGS) process.c 
 
-argv.o: argv.c globals.h Makefile
+argv.o: argv.c $(DEPS)
 	$(CC) $(ARGS) argv.c 
 
-misc.o: misc.c globals.h Makefile
+misc.o: misc.c $(DEPS)
 	$(CC) $(ARGS) misc.c
 
 clean:

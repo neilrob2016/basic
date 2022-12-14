@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2022"
-#define VERSION     "1.7.1"
+#define VERSION     "1.7.2"
 
 #define STDIN  0
 #define STDOUT 1
@@ -414,6 +414,9 @@ enum
 	ERR_RENAME_SAME,
 	ERR_RENAME_TYPE,
 
+	/* 90 */
+	ERR_INVALID_PATH,
+
 	NUM_ERRORS
 };
 
@@ -545,7 +548,10 @@ char *error_str[NUM_ERRORS] =
 	"A variable already has the same name",
 	"A DEFEXP already has the same name",
 	"RENAME requires arguments differ",
-	"RENAME can only rename variables and DEFEXPs"
+	"RENAME can only rename variables and DEFEXPs",
+
+	/* 90 */
+	"Invalid path or path not found"
 };
 #else
 extern char *error_str[NUM_ERRORS];
@@ -1185,7 +1191,7 @@ DECL_FUNC(SysInfoStr)
 DECL_FUNC(CryptStr)
 DECL_FUNC(PadStr)
 DECL_FUNC(NumStrBase)
-DECL_FUNC(Path)
+DECL_FUNC(PathStr)
 DECL_FUNC(HaveData)
 
 #ifdef MAINFILE
@@ -1330,7 +1336,7 @@ st_func function[NUM_FUNCTIONS] =
 	{ "LPAD$",          3, { VAL_STR, VAL_STR, VAL_NUM }, funcPadStr },
 	{ "RPAD$",          3, { VAL_STR, VAL_STR, VAL_NUM }, funcPadStr },
 	{ "NUMSTRBASE",     1, { VAL_STR }, funcNumStrBase },
-	{ "PATH",           1, { VAL_STR }, funcPath },
+	{ "PATH$",          1, { VAL_STR }, funcPathStr },
 
 	/* 100 */
 	{ "HAVEDATA",       0, { VAL_UNDEF }, funcHaveData },
@@ -1696,7 +1702,7 @@ bool trueValue(st_value *val);
 int callFunction(st_runline *runline, int *pc, st_value *result);
 
 /* disk.c */
-int getFirstFileMatch(int type, char *pat, char *matchpath, int depth);
+int matchPath(int type, char *pat, char *matchpath, bool toplevel);
 
 /* defexp.c */
 int createDefExp(st_runline *runline);
@@ -1742,6 +1748,7 @@ void freeArgv(int b_argc, char **b_argv);
 
 /* misc.c */
 int    numType(char *str);
+bool   copyStr(char *to, char *from, int len);
 void   toUpperStr(char *str);
 void   toLowerStr(char *str);
 void   doError(int err, st_progline *progline);

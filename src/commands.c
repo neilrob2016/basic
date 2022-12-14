@@ -6,9 +6,9 @@
 	if ((S) < 0 || (S) >= MAX_STREAMS) return ERR_INVALID_STREAM; \
 	if (!dir_stream[S]) return ERR_STREAM_NOT_OPEN;
 
-int  doComRun(int comnum, st_runline *runline, int pc);
-bool setBlockEnd(st_runline *runline, int start_com, int end_com);
-int  getRunLineValue(
+static int  doComRun(int comnum, st_runline *runline, int pc);
+static bool setBlockEnd(st_runline *runline, int start_com, int end_com);
+static int  getRunLineValue(
 	st_runline *runline, int *pc, int type, int eol, st_value *result);
 
 
@@ -285,49 +285,6 @@ int comRun(int comnum, st_runline *runline)
 	return doComRun(comnum,runline,1);
 }
 	
-
-
-int doComRun(int comnum, st_runline *runline, int pc)
-{
-	st_value result;
-	int err;
-
-	deleteDefExps();
-	deleteVariables(runline);
-	resetSystemVariables();
-
-	/* This sets the new runline to the first in the program */
-	resetProgram();
-
-	/* Set $run_arg if an argument was passed */
-	if (runline->num_tokens > pc)
-	{
-		/* Pc > 1 if CHAIN command */
-		if (pc > 1)
-		{
-			if (NOT_COMMA(pc)) return ERR_SYNTAX;
-			++pc;
-		}
-		initValue(&result);
-
-		if ((err = getRunLineValue(
-			runline,&pc,VAL_UNDEF,TRUE,&result)) != OK)
-		{
-			return err;
-		}
-		if (pc < runline->num_tokens)
-		{
-			clearValue(&result);
-			return ERR_SYNTAX;
-		}
-		copyValue(run_arg_var->value,&result);
-		clearValue(&result);
-	}
-
-	return OK;
-}
-
-
 
 
 /*** Too much hassle to rejig listProgram() to write into memory just for
@@ -1882,7 +1839,7 @@ int comSave(int comnum, st_runline *runline)
 		*ptr = 0;
 
 		/* path doesn't need to be initialised */
-		if ((err = getFirstFileMatch(S_IFDIR,result.sval,path,0)) != OK)
+		if ((err = matchPath(S_IFDIR,result.sval,path,TRUE)) != OK)
 		{
 			clearValue(&result);
 			return err;
@@ -1902,7 +1859,7 @@ int comSave(int comnum, st_runline *runline)
 		err = ERR_CANT_OPEN_FILE;
 		goto ERROR;
 	}
-	printf("SAVING: %s",filename);
+	printf("SAVING \"%s\": ",filename);
 	fflush(stdout);
 
 	err = listProgram(fp,0,0,FALSE);
@@ -1958,7 +1915,7 @@ int comDir(int comnum, st_runline *runline)
 		pc = 1;
 		if ((err = getRunLineValue(runline,&pc,VAL_STR,TRUE,&pattern)) != OK)
 			return err;
-		if ((err = getFirstFileMatch(S_IFDIR,pattern.sval,dirname,0)) != OK)
+		if ((err = matchPath(S_IFDIR,pattern.sval,dirname,TRUE)) != OK)
 		{
 			clearValue(&pattern);
 			return err;
@@ -2125,7 +2082,7 @@ int comRm(int comnum, st_runline *runline)
 		else
 			fullpath = pattern.sval;
 
-		if ((err = getFirstFileMatch(S_IFREG,fullpath,filename,0)) != OK)
+		if ((err = matchPath(S_IFREG,fullpath,filename,TRUE)) != OK)
 		{
 			clearValue(&pattern);
 			return err;
@@ -2261,6 +2218,7 @@ int comInput(int comnum, st_runline *runline)
 	double sleep_time;
 
 	dir_read = FALSE;
+	sleep_time = 0;
 	setValue(eof_var->value,VAL_NUM,NULL,0);
 	setValue(interrupted_var->value,VAL_NUM,NULL,0);
 
@@ -3474,10 +3432,53 @@ int comKillAll(int comnum, st_runline *runline)
 }
 
 
-/*********************************** SUPPORT *********************************/
+/********************************* STATICS *********************************/
+
+static int doComRun(int comnum, st_runline *runline, int pc)
+{
+	st_value result;
+	int err;
+
+	deleteDefExps();
+	deleteVariables(runline);
+	resetSystemVariables();
+
+	/* This sets the new runline to the first in the program */
+	resetProgram();
+
+	/* Set $run_arg if an argument was passed */
+	if (runline->num_tokens > pc)
+	{
+		/* Pc > 1 if CHAIN command */
+		if (pc > 1)
+		{
+			if (NOT_COMMA(pc)) return ERR_SYNTAX;
+			++pc;
+		}
+		initValue(&result);
+
+		if ((err = getRunLineValue(
+			runline,&pc,VAL_UNDEF,TRUE,&result)) != OK)
+		{
+			return err;
+		}
+		if (pc < runline->num_tokens)
+		{
+			clearValue(&result);
+			return ERR_SYNTAX;
+		}
+		copyValue(run_arg_var->value,&result);
+		clearValue(&result);
+	}
+
+	return OK;
+}
+
+
+
 
 /*** Saves duplicated code ***/
-int getRunLineValue(
+static int getRunLineValue(
 	st_runline *runline, int *pc, int type, int eol, st_value *result)
 {
 	int err;
@@ -3507,7 +3508,7 @@ int getRunLineValue(
 
 
 /*** Find the matching end block command ***/
-bool setBlockEnd(st_runline *runline, int start_com, int end_com)
+static bool setBlockEnd(st_runline *runline, int start_com, int end_com)
 {
 	st_runline *rl;
 	st_runline *end_rl;

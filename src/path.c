@@ -1,30 +1,11 @@
 #include "globals.h"
 
-/*** Never go longer than MAX PATH but make sure string is terminated ***/
-void mystrcpy(char *to, char *from)
-{
-	strncpy(to,from,PATH_MAX);
-	to[PATH_MAX] = 0;
-}
-
-
-
-
-/*** Ditto above ***/
-bool mystrcat(char *to, char *add)
-{
-	int len = PATH_MAX - strlen(to);
-	if (len <= 0) return FALSE;
-	strncat(to,add,len);
-	return TRUE;
-}
-
-
-
+static int appendPath(char *to, char *add);
+static char *getUserDir(char *name, char *matchpath);
 
 /*** Goes through a particular directory and looks for an object type that
      matches type and pattern. If type is zero then match any type. ***/
-int getFirstFileMatch(int type, char *pat, char *matchpath, int depth)
+int matchPath(int type, char *pat, char *matchpath, bool toplevel)
 {
 	DIR *dir;
 	struct dirent *de;
@@ -36,24 +17,29 @@ int getFirstFileMatch(int type, char *pat, char *matchpath, int depth)
 	int stat_type;
 
 	/* Set up initial dir to read */
-	if (!depth)
+	if (toplevel)
 	{
-		if (pat[0] == '/')
+		matchpath[0] = 0;
+
+		if (*pat == '/')
 		{
 			strcpy(matchpath,"/");
 			++pat;
 		}
-		else if (pat[0] == '~')
+		else if (*pat == '~')
 		{
 			++pat;
-			if (pat[0] == '/') ++pat;
 			home_dir = getpwuid(uid_var->value[0].dval)->pw_dir;
-			if (home_dir)
+			if (!*pat) strcpy(matchpath,home_dir);
+			else if (*pat == '/')
 			{
+				++pat;
 				strcpy(matchpath,home_dir);
-				strcat(matchpath,"/");
 			}
-			else strcpy(matchpath,"./");
+			else if (!(pat = getUserDir(pat,matchpath)))
+				return ERR_INVALID_PATH;
+
+			strcat(matchpath,"/");
 		}
 		else if (!strncmp(pat,"../",3))
 		{
@@ -63,8 +49,7 @@ int getFirstFileMatch(int type, char *pat, char *matchpath, int depth)
 		else
 		{
 			strcpy(matchpath,"./");
-			if (pat[0] == '.') ++pat;
-			if (pat[0] == '/') ++pat;
+			if (pat[0] == '.' && pat[1] == '/') pat += 2;
 		}
 
 		/* If no pattern left then we've got path already */
@@ -87,13 +72,13 @@ int getFirstFileMatch(int type, char *pat, char *matchpath, int depth)
 
 		/* Name matches the pattern. Stat it and make sure its
 		   the correct type */
-		mystrcpy(path,matchpath);
-		if (path[strlen(path)-1] != '/') mystrcat(path,"/");
-		if (!mystrcat(path,de->d_name))
+		if (!copyStr(path,matchpath,PATH_MAX))
 		{
 			err = ERR_FILENAME_TOO_LONG;
 			goto DONE;
 		}
+		if (path[strlen(path)-1] != '/') appendPath(path,"/");
+		if ((err = appendPath(path,de->d_name)) != OK) goto DONE;
 
 		if (stat(path,&fs) == -1)
 		{
@@ -108,10 +93,13 @@ int getFirstFileMatch(int type, char *pat, char *matchpath, int depth)
 		{
 			if (stat_type == S_IFDIR)
 			{
-				mystrcpy(matchpath,path);
-				err = getFirstFileMatch(type,ptr+1,matchpath,depth+1);
+				if (!copyStr(matchpath,path,PATH_MAX))
+				{
+					err = ERR_FILENAME_TOO_LONG;
+					goto DONE;
+				}
 
-				if (err == ERR_NO_SUCH_FILE) 
+				if (matchPath(type,ptr+1,matchpath,FALSE) != OK)
 				{
 					/* Get rid of the bit added by the 
 					   recursive call and go around again */
@@ -130,15 +118,43 @@ int getFirstFileMatch(int type, char *pat, char *matchpath, int depth)
 		if (!type || stat_type == type || 
 		    (type == S_IFREG && stat_type == S_IFLNK))
 		{
-			mystrcpy(matchpath,path);
-			err = OK;
+			if (!copyStr(matchpath,path,PATH_MAX))
+				err = ERR_FILENAME_TOO_LONG;
 			goto DONE;
 		}
 	}
-	err = ERR_NO_SUCH_FILE;
+	err = ERR_INVALID_PATH;
 
 	DONE:
 	closedir(dir);
 	if (ptr) *ptr = '/';
 	return err;
+}
+
+
+
+
+static int appendPath(char *to, char *add)
+{
+	int len = PATH_MAX - strlen(to);
+	if (len <= 0) return ERR_FILENAME_TOO_LONG;
+	strncat(to,add,len);
+	return OK;
+}
+
+
+
+
+static char *getUserDir(char *name, char *matchpath)
+{
+	struct passwd *pwd;
+	char *ptr;
+
+	if ((ptr = strchr(name,'/')))
+		*ptr = 0;
+	else
+		ptr = name + strlen(name) - 1;
+	if (!(pwd = getpwnam(name))) return NULL;
+	strcpy(matchpath,pwd->pw_dir);
+	return ptr + 1;
 }

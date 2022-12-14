@@ -57,7 +57,7 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 	/* Get the function parameters */
 	for(pnum=0;function[func].num_params && pc2 < runline->num_tokens;++pc2)
 	{
-		/* < 0 means variadic function where all paremeters must be the
+		/* < 0 means variadic function where all parameters must be the
 		   same type and min number of params is abs(num_params) */
 		if (function[func].num_params < 0)
 		{
@@ -908,7 +908,11 @@ int funcElement(int func, st_var **var, st_value *vallist, st_value *result)
 		if ((pos = vallist[1].dval) < 1) return ERR_INVALID_ARG;
 		setValue(result,VAL_STR,"",0);
 	}
-	else setValue(result,VAL_NUM,NULL,0);
+	else
+	{
+		setValue(result,VAL_NUM,NULL,0);
+		pos = 0;  /* Avoids gcc warning */
+	}
 
 	for(wcnt=0,s=vallist[0].sval;;s=e+1)
 	{
@@ -1378,9 +1382,9 @@ int funcRmFileOrDir(int func, st_var **var, st_value *vallist, st_value *result)
 
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
 
-	if (getFirstFileMatch(
+	if (matchPath(
 		(func == FUNC_RMFILE) ? S_IFREG : S_IFDIR,
-		vallist[0].sval,filename,0) != OK)
+		vallist[0].sval,filename,TRUE) != OK)
 	{
 		setValue(result,VAL_STR,"",0);
 		return OK;
@@ -1597,12 +1601,12 @@ int funcSelect(int func, st_var **var, st_value *vallist, st_value *result)
 
 
 /*** Returns a path matching the pattern given ***/
-int funcPath(int func, st_var **var, st_value *vallist, st_value *result)
+int funcPathStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	char matchpath[PATH_MAX+1];
 	int err;
 
-	if ((err = getFirstFileMatch(0,vallist[0].str,matchpath,0)) == OK)
+	if ((err = matchPath(0,vallist[0].sval,matchpath,TRUE)) == OK)
 		setValue(result,VAL_STR,matchpath,0);
 	else
 		setValue(result,VAL_STR,NULL,0);
@@ -1745,7 +1749,7 @@ int funcExec(int func, st_var **var, st_value *vallist, st_value *result)
 	if (pvar->arrsize != 2) return ERR_ARR_SIZE;
 
 	/* Get the command line arguments from the string */
-	if (!(b_argc = splitStringIntoArgv(vallist[0].str,&b_argv)))
+	if (!(b_argc = splitStringIntoArgv(vallist[0].sval,&b_argv)))
 		return ERR_INVALID_ARG;
 
 	/* Always use the lower value side of the socket pair */

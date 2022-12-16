@@ -15,7 +15,7 @@ static void evalPreOpStack(
 	int *pre_op_stack, int pre_op_stack_cnt, st_value *result);
 static void clearStack(st_value *stack, int top);
 static int  skipRHSofAND(st_runline *runline, int pc, bool *is_end);
-static bool isEndOfExpression(st_token *token);
+static inline bool isEndOfExpression(st_token *token);
 
 
 

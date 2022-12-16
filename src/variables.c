@@ -163,10 +163,24 @@ void resetSystemVariables()
 	setValue(eof_var->value,VAL_NUM,NULL,0);
 	setValue(error_var->value,VAL_NUM,NULL,0);
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
-	setValue(angle_mode_var->value,VAL_STR,angle_in_degrees ? "DEG" : "RAD",0);
+	setValue(
+		angle_mode_var->value,
+		VAL_STR,flags.angle_in_degrees ? "DEG" : "RAD",0);
 	setValue(run_arg_var->value,VAL_STR,NULL,0);
 	setValue(interrupted_var->value,VAL_NUM,NULL,0);
 	createProcessArray();
+}
+
+
+
+
+void setTermVariables()
+{
+	if (term_cols_var)
+	{
+		setValue(term_cols_var->value,VAL_NUM,NULL,term_cols);
+		setValue(term_rows_var->value,VAL_NUM,NULL,term_rows);
+	}
 }
 
 

@@ -225,3 +225,13 @@ December 2022
 - Removed strncpy() from the code
 - General code tidying and improvements
 - Makefile bug fix and updates
+
+
+1.7.3
+- Keyboard input now retained when INPUT command interrupted
+- Fixed potential race condition with SIGWINCH
+- Moved some functions out from misc.c into strings.c
+- The -a command line option will now error if -l is not provided.
+- Code updates including reducing gcc warnings and moving flags into a bitfield
+  struct.
+- Updated some example programs

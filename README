@@ -36,10 +36,10 @@ Running
 Once compiled just type "basic" with any of the following command line options:
 
 Usage: basic
-       -p <.bas file> : BASIC program file.
+       -l <.bas file> : BASIC program file to load at startup.
        -h <lines>     : Number of history lines. Default = 100
        -r <run arg>   : Sets _run_arg system variable.
-       -a             : Autorun program.
+       -a             : Autorun program loaded with -l.
        -s             : Enforce strict mode which means normal variables must
                         be declared with DIM before use.
        -k             : Use 1024 bytes to calculate kilobytes in DIR* output
@@ -47,6 +47,7 @@ Usage: basic
        -v             : Print version and build information then exit.
        --             : Everything following this gets passed to BASIC as
                         _argv with _argc system variables set.
+Note: All these arguments are optional.
 
 For questions or to report bugs not mentioned in BUGS then please email me 
 at the address below.

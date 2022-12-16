@@ -222,7 +222,7 @@ int funcTrig1(int func, st_var **var, st_value *vallist, st_value *result)
 	double val;
 
 	radians = vallist[0].dval;
-	if (angle_in_degrees) radians /= DEGS_PER_RADIAN;
+	if (flags.angle_in_degrees) radians /= DEGS_PER_RADIAN;
 
 	switch(func)
 	{
@@ -265,7 +265,7 @@ int funcTrig2(int func, st_var **var, st_value *vallist, st_value *result)
 		assert(0);
 	}
 
-	if (angle_in_degrees) val *= DEGS_PER_RADIAN;
+	if (flags.angle_in_degrees) val *= DEGS_PER_RADIAN;
 	setValue(result,VAL_NUM,NULL,val);
 	return OK;
 }
@@ -663,7 +663,7 @@ int funcGetKeyStr(int func, st_var **var, st_value *vallist, st_value *result)
 
 	/* first_keyval is indexed by 1st character of string for speed so
 	   need to go through ascii codes and linked list */
-	for(c=0,cnt=0;c <= MAX_UCHAR && cnt < keynum;++c)
+	for(c=0,cnt=0,kv=NULL;c <= MAX_UCHAR && cnt < keynum;++c)
 	{
 		for(kv=var[0]->first_keyval[c];kv;kv=kv->next)
 			if (++cnt == keynum) break;
@@ -1224,35 +1224,35 @@ int funcPadStr(int func, st_var **var, st_value *vallist, st_value *result)
 int funcOpen(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	char *flagstr;
+	int oflags;
 	int fd;
-	int flags;
 	int mode = 0;
 	int snum;
 
 	flagstr = vallist[1].sval;
-	if (!strcmp(flagstr,"r")) flags = O_RDONLY;
+	if (!strcmp(flagstr,"r")) oflags = O_RDONLY;
 	else if (!strcmp(flagstr,"o"))  /* Overwrite - don't truncate first */
 	{
-		flags = O_CREAT | O_WRONLY;
+		oflags = O_CREAT | O_WRONLY;
 		mode = 0666;
 	}
 	else if (!strcmp(flagstr,"w"))
 	{
-		flags = O_CREAT | O_TRUNC | O_WRONLY;
+		oflags = O_CREAT | O_TRUNC | O_WRONLY;
 		mode = 0666;
 	}
 	else if (!strcmp(flagstr,"a"))
 	{
-		flags = O_CREAT | O_APPEND | O_WRONLY;
+		oflags = O_CREAT | O_APPEND | O_WRONLY;
 		mode = 0666;
 	}
-	else if (!strcmp(flagstr,"rw")) flags = O_RDWR;
+	else if (!strcmp(flagstr,"rw")) oflags = O_RDWR;
 	else return ERR_INVALID_ARG;
 
 	FIND_FREE_STREAM(snum);
  
 	/* Don't throw an error if can't open file - just set syserror */
-	if ((fd = open(vallist[0].sval,flags,mode)) == -1)
+	if ((fd = open(vallist[0].sval,oflags,mode)) == -1)
 	{
 		setValue(result,VAL_NUM,NULL,0);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
@@ -1716,7 +1716,7 @@ int funcFork(int func, st_var **var, st_value *vallist, st_value *result)
 
 	case 0:
 		/* Child */
-		child_process = TRUE;
+		flags.child_process = TRUE;
 		setValue(pid_var->value,VAL_NUM,NULL,getpid());
 		setValue(ppid_var->value,VAL_NUM,NULL,getppid());
 		break;

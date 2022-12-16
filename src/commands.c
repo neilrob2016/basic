@@ -392,7 +392,7 @@ int comEdit(int comnum, st_runline *runline)
 	
 	prompt();
 	drawKeyLine(next_keyb_line);
-	draw_prompt = FALSE;
+	flags.draw_prompt = FALSE;
 	return OK;
 }
 
@@ -485,7 +485,7 @@ int comDeleteMove(int comnum, st_runline *runline)
 /*** Switches line wrap on & off in LIST ***/
 int comWrap(int comnum, st_runline *runline)
 {
-	listing_line_wrap = (comnum == COM_WRON);
+	flags.listing_line_wrap = (comnum == COM_WRON);
 	return OK;
 }
 
@@ -1737,7 +1737,7 @@ int comStop(int comnum, st_runline *runline)
 {
 	if (runline->parent->linenum)
 	{
-		if (child_process)
+		if (flags.child_process)
 		{
 			printf("*** STOP in line %d, pid %u ***\n",
 				runline->parent->linenum,getpid());
@@ -1907,6 +1907,7 @@ int comDir(int comnum, st_runline *runline)
 	size_t basic_bytes;
 	size_t total_bytes;
 
+	err = OK;
 	initValue(&pattern);
 
 	if (runline->num_tokens == 1) strcpy(dirname,".");
@@ -2046,7 +2047,6 @@ int comDir(int comnum, st_runline *runline)
 		printf("Symlinks   : %d\nDirectories: %d\nOther      : %d\n\n",
 			link_cnt,dir_cnt,other_cnt);
 	}
-	err = OK;
 
 	DONE:
 	closedir(dir);
@@ -2213,11 +2213,16 @@ int comInput(int comnum, st_runline *runline)
 	int mod_index;
 	bool dir_read;
 	bool insert;
+	bool set_value;
 	double start;
 	double end;
 	double sleep_time;
 
+	err = OK;
+	fd = STDIN; 
+	snum = -1;
 	dir_read = FALSE;
+	set_value = FALSE;
 	sleep_time = 0;
 	setValue(eof_var->value,VAL_NUM,NULL,0);
 	setValue(interrupted_var->value,VAL_NUM,NULL,0);
@@ -2258,33 +2263,33 @@ int comInput(int comnum, st_runline *runline)
 			return ERR_SYNTAX;
 		++pc;
 	}
-	else
-	{
-		/* Default to stdin */
-		fd = STDIN;
-		pc = 1;
-	}
+	else pc = 1;
 
 	/* Get variable */
 	token = &runline->tokens[pc];
 	if (!token->var && (err = getOrCreateTokenVariable(token))) return err;
 
+	insert = TRUE;
 	initValue(&result);
 	initValue(&icnt_or_key);
 	tvptr = NULL;
-	cstr[0] = 0;
-	str = cstr;
 	bzero(&kbline,sizeof(kbline));
-	insert = TRUE;
+
+	if (comnum == COM_CINPUT)
+	{
+		cstr[0] = 0;
+		str = cstr;
+	}
+	else str = kbline.str;
 
 	/* Get index */
 	if (runline->num_tokens > 2)
 	{
 		++pc;
-		if (IS_OP_TYPE(&runline->tokens[pc],OP_L_BRACKET))
+		if (IS_OP_TYPE(&runline->tokens[pc],OP_L_BRACKET) &&
+		    (err = getVarIndexes(runline,&pc,&icnt_or_key,index)) != OK)
 		{
-			if ((err = getVarIndexes(runline,&pc,&icnt_or_key,index)) != OK)
-				goto ERROR;
+			goto DONE;
 		}
 
 		/* Get timeout val for CINPUT */
@@ -2293,16 +2298,16 @@ int comInput(int comnum, st_runline *runline)
 			if (comnum == COM_INPUT || NOT_COMMA(pc))
 			{
 				err = ERR_SYNTAX;
-				goto ERROR;
+				goto DONE;
 			}
 			++pc;
 			if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
-				goto ERROR;
+				goto DONE;
 
 			if (result.dval < 0)
 			{
 				err = ERR_INVALID_ARG;
-				goto ERROR;
+				goto DONE;
 			}
 
 			/* Timeout is in floating point seconds - convert */
@@ -2314,7 +2319,7 @@ int comInput(int comnum, st_runline *runline)
 		if (pc < runline->num_tokens)
 		{
 			err = ERR_SYNTAX;
-			goto ERROR;
+			goto DONE;
 		}
 	}
 
@@ -2332,6 +2337,7 @@ int comInput(int comnum, st_runline *runline)
 	}
 
 	esc_cnt = 0;
+	set_value = TRUE;
 
 	/* Wait for input then set variable */
 	while(1)
@@ -2345,9 +2351,9 @@ int comInput(int comnum, st_runline *runline)
 		{
 		case -1:
 			/* Ignore term resize signals if no ON TERMSIZE set */
-			if (last_signal == SIGWINCH && 
-			    !on_termsize_goto && !on_termsize_gosub)
+			if (last_signal == SIGWINCH)
 			{
+				setTermVariables();
 				if (tvptr)
 				{
 					end = getCurrentTime();
@@ -2357,11 +2363,14 @@ int comInput(int comnum, st_runline *runline)
 					start = end;
 					goto SELECT;
 				}
-				last_signal = 0;
-				continue;
+			    	if (!on_termsize_goto && !on_termsize_gosub)
+				{
+					last_signal = 0;
+					continue;
+				}
 			}
 			err = ERR_READ;
-			goto ERROR;
+			goto DONE;
 
 		case 0:
 			/* Timeout */
@@ -2372,7 +2381,7 @@ int comInput(int comnum, st_runline *runline)
 			{
 			case -1:
 				err = ERR_READ;
-				goto ERROR;
+				goto DONE;
 
 			case 0:
 				setValue(eof_var->value,VAL_NUM,NULL,1);
@@ -2478,7 +2487,6 @@ int comInput(int comnum, st_runline *runline)
 				break;
 
 			case '\n':
-				str = kbline.str;
 				err = OK;
 				if (fd == STDIN) PRINT("\n",1);
 				goto DONE;
@@ -2496,16 +2504,20 @@ int comInput(int comnum, st_runline *runline)
 					addDefModStrToKeyLine(&kbline,c,fd == STDIN,insert);
 				else
 					addCharToKeyLine(&kbline,c,fd == STDIN,insert);
+				/* kbline.str is realloced so reassign */
+				str = kbline.str;
 			}
 		}
 	}
 
 	DONE:
-	setValue(&result,VAL_STR,str,0);
-	err = setVarValue(token->var,&icnt_or_key,index,&result,FALSE);
-	/* Fall through */
-
-	ERROR:
+	if (set_value)
+	{
+		/* Set variable with whatever we have in case we're been
+		   interrupted by a signal */
+		setValue(&result,VAL_STR,str,0);
+		err = setVarValue(token->var,&icnt_or_key,index,&result,FALSE);
+	}
 	if (str != cstr && str) free(str);
 	clearValue(&result);
 	clearValue(&icnt_or_key);
@@ -2950,6 +2962,7 @@ int comDefMod(int comnum, st_runline *runline)
 	}
 
 	err = ERR_SYNTAX;
+	index = 0;
 	initValue(&result);
 
 	for(pc=cnt=1;pc < runline->num_tokens;++pc,++cnt)
@@ -3123,17 +3136,17 @@ int comOn(int comnum, st_runline *runline)
 		/* ON ERROR CONT */
 		if (is_cont)
 		{
+			flags.on_error_cont = TRUE;
 			on_error_goto = NULL;
 			on_error_gosub = NULL;
-			on_error_cont = TRUE;
 			return OK;
 		}
 		/* ON ERROR BREAK */
 		if (is_break)
 		{
+			flags.on_error_cont = FALSE;
 			on_error_goto = NULL;
 			on_error_gosub = NULL;
-			on_error_cont = FALSE;
 			return OK;
 		}
 		break;
@@ -3141,24 +3154,24 @@ int comOn(int comnum, st_runline *runline)
 		/* ON BREAK CONT */
 		if (is_cont)
 		{
+			flags.on_break_cont = TRUE;
 			on_break_goto = NULL;
 			on_break_gosub = NULL;
-			on_break_cont = TRUE;
 			return OK;
 		}
 		/* ON BREAK BREAK */
 		if (is_break)
 		{
+			flags.on_break_cont = FALSE;
 			on_break_goto = NULL;
 			on_break_gosub = NULL;
-			on_break_cont = FALSE;
 			return OK;
 		}
 		/* This works alongside the other ON BREAK options so don't
 		   clear them */	
 		if (IS_COM_TYPE(&runline->tokens[2],COM_CLEAR))
 		{
-			on_break_clear = TRUE;
+			flags.on_break_clear = TRUE;
 			return OK;
 		}
 		break;
@@ -3191,14 +3204,14 @@ int comOn(int comnum, st_runline *runline)
 		switch(token->subtype)
 		{
 		case COM_ERROR:
+			flags.on_error_cont = FALSE;
 			on_error_goto = progline;
 			on_error_gosub = NULL;
-			on_error_cont = FALSE;
 			break;
 		case COM_BREAK:
+			flags.on_break_cont = FALSE;
 			on_break_goto = progline;
 			on_break_gosub = NULL;
-			on_break_cont = FALSE;
 			break;
 		case COM_TERMSIZE:
 			on_termsize_goto = progline;
@@ -3213,14 +3226,14 @@ int comOn(int comnum, st_runline *runline)
 	switch(token->subtype)
 	{
 	case COM_ERROR:
+		flags.on_error_cont = FALSE;
 		on_error_goto = NULL;
 		on_error_gosub = progline;
-		on_error_cont = FALSE;
 		break;
 	case COM_BREAK:
+		flags.on_break_cont = FALSE;
 		on_break_goto = NULL;
 		on_break_gosub = progline;
-		on_break_cont = FALSE;
 		break;
 	case COM_TERMSIZE:
 		on_termsize_goto = NULL;
@@ -3238,10 +3251,10 @@ int comOn(int comnum, st_runline *runline)
 
 int comAngleType(int comnum, st_runline *runline)
 {
-	angle_in_degrees = (comnum == COM_DEG);
+	flags.angle_in_degrees = (comnum == COM_DEG);
         setValue(
 		angle_mode_var->value,
-		VAL_STR,angle_in_degrees ? "DEG" : "RAD",0);
+		VAL_STR,flags.angle_in_degrees ? "DEG" : "RAD",0);
 	return OK;
 }
 
@@ -3276,6 +3289,7 @@ int comSleep(int comnum, st_runline *runline)
 
 		if (last_signal != SIGWINCH ||
 		    on_termsize_goto || on_termsize_gosub) return ERR_SLEEP;
+		if (last_signal == SIGWINCH) setTermVariables();
 
 		/* Try and recover after interrupt */
 		last_signal = 0;

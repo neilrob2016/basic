@@ -15,8 +15,8 @@ bool execProgLine(st_progline *progline)
 
 	runline = progline->first_runline;
 	prog_new_runline = NULL;
-	prog_new_runline_set = FALSE;
-	executing = TRUE;
+	flags.prog_new_runline_set = FALSE;
+	flags.executing = TRUE;
 	linenum = -1;
 
 	/* Loop until no more runlines. This could be a single program line
@@ -38,22 +38,22 @@ bool execProgLine(st_progline *progline)
 		}
 
 		/* If something has set it , jump to it */
-		if (prog_new_runline_set)
+		if (flags.prog_new_runline_set)
 		{
 			runline = prog_new_runline;
-			prog_new_runline_set = FALSE;
+			flags.prog_new_runline_set = FALSE;
 		}
 		else runline = next;
 	}
 
 	/* If we're a child process then exit - don't go back to prompt */
-	if (child_process) exit(0);
+	if (flags.child_process) exit(0);
 
 	/* Don't want to jump back into the program if we have an error on
 	   the command line */
 	initOnSettings();
 
-	executing = FALSE;
+	flags.executing = FALSE;
 	return ok;
 }
 
@@ -102,9 +102,8 @@ bool execRunLine(st_runline *runline)
 
 		/* Delete user variables. This can be used in conjunction with 
 		   other ON BREAK settings hence it comes first */
-		if (on_break_clear) deleteVariables(NULL);
-
-		if (on_break_cont) return TRUE;
+		if (flags.on_break_clear) deleteVariables(NULL);
+		if (flags.on_break_cont) return TRUE;
 
 		/* If break handlers set use them */
 		if (on_break_goto)
@@ -121,7 +120,7 @@ bool execRunLine(st_runline *runline)
 		{
 			if (runline->parent->linenum)
 			{
-				if (child_process)
+				if (flags.child_process)
 				{
 					printf("*** BREAK in line %d, pid %u ***\n",
 						runline->parent->linenum,getpid());
@@ -137,6 +136,7 @@ bool execRunLine(st_runline *runline)
 		last_signal = 0;
 		interrupted_runline = runline;
 		setValue(interrupted_var->value,VAL_NUM,NULL,1);
+		setTermVariables();
 
 		if (on_termsize_goto)
 		{
@@ -158,7 +158,7 @@ bool execRunLine(st_runline *runline)
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
 		setValue(error_line_var->value,VAL_NUM,NULL,runline->parent->linenum);
 
-		if (on_error_cont) return TRUE;
+		if (flags.on_error_cont) return TRUE;
 
 		/* See if error handlers set */
 		if (on_error_goto)

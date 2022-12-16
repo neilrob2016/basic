@@ -1,2 +1,2 @@
+AFTER command
 GOTO/GOSUB string labels
-INPUT loses any text entered if its interrupted

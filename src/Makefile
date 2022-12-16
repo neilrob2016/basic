@@ -39,6 +39,7 @@ OBJS=\
 	functions.o \
 	variables.o \
 	expressions.o \
+	strings.o \
 	defexp.o \
 	defmod.o \
 	values.o \
@@ -83,6 +84,9 @@ variables.o: variables.c $(DEPS) build_date
 
 expressions.o: expressions.c $(DEPS)
 	$(CC) $(ARGS) expressions.c
+
+strings.o: strings.c $(DEPS)
+	$(CC) $(ARGS) strings.c
 
 defexp.o: defexp.c $(DEPS)
 	$(CC) $(ARGS) defexp.c

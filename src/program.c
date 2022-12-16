@@ -20,7 +20,7 @@ void subInitProgram()
 	data_autorestore_runline = NULL;
 	data_pc = 0;
 	last_signal = 0;
-	prog_new_runline_set = FALSE;
+	flags.prog_new_runline_set = FALSE;
 
 	deleteDefExps();
 
@@ -52,13 +52,13 @@ void subInitProgram()
 
 void initOnSettings()
 {
+	flags.on_break_cont = FALSE;
+	flags.on_error_cont = FALSE;
+	flags.on_break_clear = FALSE;
 	on_error_goto = NULL;
 	on_error_gosub = NULL;
 	on_break_goto = NULL;
 	on_break_gosub = NULL;
-	on_break_cont = FALSE;
-	on_error_cont = FALSE;
-	on_break_clear = FALSE;
 	on_termsize_goto = NULL;
 	on_termsize_gosub = NULL;
 }
@@ -69,10 +69,10 @@ void initOnSettings()
 /*** Called at startup and when a program is deleted ***/
 void initProgram()
 {
+	flags.prog_new_runline_set = FALSE;
+	flags.angle_in_degrees = TRUE;
 	prog_first_line = NULL;
 	prog_new_runline = NULL;
-	prog_new_runline_set = FALSE;
-	angle_in_degrees = TRUE;
 
 	subInitProgram();
 	initOnSettings();
@@ -89,7 +89,7 @@ void resetProgram()
 	if (prog_first_line)
 		setNewRunLine(prog_first_line->first_runline);
 	else
-		prog_new_runline_set = FALSE;
+		flags.prog_new_runline_set = FALSE;
 
 	resetProgPointers();
 }
@@ -273,7 +273,7 @@ bool deleteProgLines(u_int from, u_int to)
 
 void setNewRunLine(st_runline *runline)
 {
-	prog_new_runline_set = TRUE;
+	flags.prog_new_runline_set = TRUE;
 	prog_new_runline = runline;
 }
 
@@ -305,7 +305,7 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 	if ((err = matchPath(S_IFREG,filename,matchpath,TRUE)) != OK)
 		goto ERROR;
 	
-	if (!autorun)
+	if (!flags.autorun)
 	{
 		printf("LOADING \"%s\": ",matchpath);
 		fflush(stdout);
@@ -341,7 +341,7 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 		/* EOL or EOF */
 		if (!ret || line[len] == '\n')
 		{
-			if (!autorun && !(++linecnt % PROGRESS_LINES))
+			if (!flags.autorun && !(++linecnt % PROGRESS_LINES))
 				PRINT("=",1);
 
 			if (ret) line[len] = 0;
@@ -376,7 +376,7 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 	}
 	fclose(fp);
 	FREE(line);
-	if (!autorun) putchar('\n');
+	if (!flags.autorun) putchar('\n');
 	return OK;
 
 	ERROR: 
@@ -390,7 +390,7 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 
 /* Wrap lines nicely with indentation. Don't just leave it up to the term */
 #define AUTOWRAP(INC) \
-	if (fp == stdout && listing_line_wrap) \
+	if (fp == stdout && flags.listing_line_wrap) \
 	{ \
 		line_width += (INC); \
 		if (line_width + loop_indent + if_indent >= term_cols) \

@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2022"
-#define VERSION     "1.7.2"
+#define VERSION     "1.7.3"
 
 #define STDIN  0
 #define STDOUT 1
@@ -90,6 +90,8 @@
 #define TRUE   1
 #define EITHER 2
 
+#define TERM_ROWS         80
+#define TERM_COLS         25
 #define MAX_UCHAR         0xFF
 #define MAX_RETURN_STACK  1000
 #define MAX_INDEXES       5
@@ -1584,17 +1586,6 @@ EXTERN char **watch_vars;
 EXTERN char *cmdline_run_arg;
 EXTERN char build_options[100];
 
-EXTERN bool on_break_clear;
-EXTERN bool prog_new_runline_set;
-EXTERN bool autorun;
-EXTERN bool executing;
-EXTERN bool listing_line_wrap;
-EXTERN bool on_break_cont;
-EXTERN bool on_error_cont;
-EXTERN bool draw_prompt;
-EXTERN bool child_process;
-EXTERN bool angle_in_degrees;
-
 EXTERN int kilobyte;
 EXTERN int processes_cnt;
 EXTERN int tracing_mode;
@@ -1615,6 +1606,22 @@ EXTERN int stream[MAX_STREAMS];
 
 EXTERN FILE *popen_fp[MAX_STREAMS];
 EXTERN DIR *dir_stream[MAX_DIR_STREAMS];
+
+typedef struct
+{
+	unsigned on_break_clear:1;
+	unsigned on_break_cont:1;
+	unsigned on_error_cont:1;
+	unsigned autorun:1;
+	unsigned executing:1;
+	unsigned child_process:1;
+	unsigned prog_new_runline_set:1;
+	unsigned listing_line_wrap:1;
+	unsigned angle_in_degrees:1;
+	unsigned draw_prompt:1;
+} st_flags;
+
+EXTERN st_flags flags;
 
 /**************************** FORWARD DECLARATIONS **************************/
 
@@ -1663,6 +1670,7 @@ bool execRunLine(st_runline *runline);
 /* variables.c */
 void createSystemVariables(int argc, char **argv, char **env);
 void resetSystemVariables();
+void setTermVariables();
 int  getOrCreateTokenVariable(st_token *token);
 int  reDimArray(st_var *var, int index_cnt, int *index);
 st_var *createVariable(char *name, int type, int index_cnt, int *index);
@@ -1746,18 +1754,19 @@ void drawCircle(int x, int y, int radius, int fill, char *str, int slen);
 int  splitStringIntoArgv(char *str, char ***b_argv);
 void freeArgv(int b_argc, char **b_argv);
 
-/* misc.c */
+/* strings.c */
 int    numType(char *str);
 bool   copyStr(char *to, char *from, int len);
 void   toUpperStr(char *str);
 void   toLowerStr(char *str);
-void   doError(int err, st_progline *progline);
 bool   wildMatch(char *str, char *pat, bool case_sensitive);
 char  *addFileExtension(char *filename);
+
+/* misc.c */
+void   doError(int err, st_progline *progline);
 double getCurrentTime();
 void   printTrace(int linenum, char *type, char *name);
 void   ready();
 void   prompt();
 char   pressAnyKey(char *msg);
 void   doExit(int code);
-

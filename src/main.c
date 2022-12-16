@@ -11,7 +11,7 @@
 
 #define NUM_KEYB_LINES 100
 
-char *filename;
+char *prog_filename;
 
 static void setBuildOptions();
 static void parseCmdLine(int argc, char **argv);
@@ -29,7 +29,7 @@ int main(int argc, char **argv, char **env)
 
 	setBuildOptions();
 	parseCmdLine(argc,argv);
-	if (!autorun)
+	if (!flags.autorun)
 	{
 		printf("\n%s %s (%s, %s), pid: %u\n%s\n\n",
 			INTERPRETER,VERSION,
@@ -39,9 +39,9 @@ int main(int argc, char **argv, char **env)
 	init();
 	createSystemVariables(argc,argv,env);
 	rawMode();
-	if (filename)
+	if (prog_filename)
 	{
-		if ((err = loadProgram(filename,0,FALSE)) != OK)
+		if ((err = loadProgram(prog_filename,0,FALSE)) != OK)
 			doError(err,NULL);
 	}
 	mainloop();
@@ -79,8 +79,8 @@ static void parseCmdLine(int argc, char **argv)
 {
 	int i;
 
-	filename = NULL;
-	autorun = FALSE;
+	prog_filename = NULL;
+	flags.autorun = FALSE;
 	basic_argc_start = argc;
 	num_keyb_lines = NUM_KEYB_LINES;
 	cmdline_run_arg = NULL;
@@ -104,7 +104,7 @@ static void parseCmdLine(int argc, char **argv)
 			
 		case 'l':
 			if (++i == argc) goto USAGE;
-			filename = argv[i];
+			prog_filename = argv[i];
 			break;
 
 		case 'r':
@@ -113,7 +113,7 @@ static void parseCmdLine(int argc, char **argv)
 			break;
 
 		case 'a':
-			autorun = TRUE;
+			flags.autorun = TRUE;
 			break;
 
 		case 'k':
@@ -141,6 +141,11 @@ static void parseCmdLine(int argc, char **argv)
 			goto USAGE;
 		}
 	}
+	if (flags.autorun && !prog_filename)
+	{
+		fprintf(stderr,"ERROR: The -a argument requires -l.\n");
+		exit(1);
+	}
 	return;
 
 	USAGE:
@@ -148,7 +153,7 @@ static void parseCmdLine(int argc, char **argv)
 	       "       -l <.bas file> : BASIC program file to load at startup.\n"
 	       "       -h <lines>     : Number of history lines. Default = %d\n"
 	       "       -r <run arg>   : Sets _run_arg system variable.\n"
-	       "       -a             : Autorun program.\n"
+	       "       -a             : Auto run program loaded with -l.\n"
 	       "       -s             : Enforce strict mode which means normal variables must\n"
 	       "                        be declared with DIM before use.\n"
 	       "       -k             : Use 1024 bytes to calculate kilobytes in DIR* output\n"
@@ -156,7 +161,7 @@ static void parseCmdLine(int argc, char **argv)
 	       "       -v             : Print version and build information then exit.\n"
 	       "       --             : Everything following this gets passed to BASIC as\n"
 	       "                        _argv with _argc system variables set.\n"
-	       "Note: All parameters are optional.\n",
+	       "Note: All these arguments are optional.\n",
 		argv[0],NUM_KEYB_LINES);
 	exit(1);
 }
@@ -181,21 +186,21 @@ static void init()
 	size = sizeof(st_keybline) * num_keyb_lines;
 	assert((keyb_line = (st_keybline *)malloc(size)));
 	bzero(keyb_line,size);
-
 	bzero(first_var,sizeof(first_var));
 	bzero(last_var,sizeof(last_var));
+	bzero(&flags,sizeof(flags));
+	flags.draw_prompt = TRUE;
 	first_defexp = NULL;
 	last_defexp = NULL;
 	next_keyb_line = 0;
 	keyb_lines_free = num_keyb_lines;
 	tracing_mode = TRACING_OFF;
-	listing_line_wrap = FALSE;
 	indent_spaces = 4;
 	term_cols_var = NULL;
 	term_rows_var = NULL;
 	last_signal = 0;
-	draw_prompt = TRUE;
-	child_process = FALSE;
+	term_rows = TERM_ROWS;
+	term_cols = TERM_COLS;
 
 	bzero(stream,sizeof(stream));
 	bzero(popen_fp,sizeof(popen_fp));
@@ -226,7 +231,7 @@ static void mainloop()
 	char *line;
 
 	/* If -r given then run the loaded program immediately then exit */
-	if (autorun)
+	if (flags.autorun)
 	{
 		processProgLine(prog_first_line);
 		return;
@@ -255,7 +260,7 @@ static void sigHandler(int sig)
 {
 	last_signal = sig;
 
-	if (sig == SIGINT && !executing)
+	if (sig == SIGINT && !flags.executing)
 	{
 		puts("*** BREAK ***");
 		prompt();
@@ -270,25 +275,14 @@ static void getTermSize(int sig)
 #ifdef TIOCGWINSZ
 	struct winsize ws;
 
+	/* Very small chance of a race condition with ioctl() but too much
+	   hassle to rejig everything to do it later */
 	if (ioctl(1,TIOCGWINSZ,&ws) != -1 && (ws.ws_col || ws.ws_row))
 	{
 		term_cols = ws.ws_col;
 		term_rows = ws.ws_row;
-	}
-	else
-	{
-#endif
-		/* Just default to standard terminal screen size if we
-		   can't get it */
-		term_cols = 80;
-		term_rows = 25;
-#ifdef TIOCGWINSZ
+		if (!flags.executing) setTermVariables();
 	}
 #endif
-	if (term_cols_var)
-	{
-		setValue(term_cols_var->value,VAL_NUM,NULL,term_cols);
-		setValue(term_rows_var->value,VAL_NUM,NULL,term_rows);
-	}
 	last_signal = sig;
 }

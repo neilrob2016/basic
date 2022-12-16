@@ -13,5 +13,5 @@
   130     SLEEP 2
   140     PRINT "Parent killing child..."
   150     EVAL kill(pid,9)
-  160     PRINT "Waitpid = ",waitpid(pid)
+  160     PRINT "Waitpid = ",waitpid$(pid)
   170 CHOSEN 

@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2022"
-#define VERSION     "1.7.3"
+#define VERSION     "1.7.4"
 
 #define STDIN  0
 #define STDOUT 1
@@ -1530,18 +1530,25 @@ enum
 };
 
 
+enum
+{
+	ERR_GOTO,
+	ERR_GOSUB,
+	BRK_GOTO,
+	BRK_GOSUB,
+	TERM_GOTO,
+	TERM_GOSUB,
+
+	NUM_ON_JUMPS
+};
+	
 /*********************************** GLOBALS *********************************/
 
 EXTERN struct termios saved_tio;
 EXTERN st_keybline *keyb_line;
 
 EXTERN st_progline *prog_first_line;
-EXTERN st_progline *on_error_goto;
-EXTERN st_progline *on_error_gosub;
-EXTERN st_progline *on_break_goto;
-EXTERN st_progline *on_break_gosub;
-EXTERN st_progline *on_termsize_goto;
-EXTERN st_progline *on_termsize_gosub;
+EXTERN st_progline *on_jump[NUM_ON_JUMPS];
 
 EXTERN st_runline *return_stack[MAX_RETURN_STACK];
 EXTERN st_runline *prog_new_runline;
@@ -1612,6 +1619,7 @@ typedef struct
 	unsigned on_break_clear:1;
 	unsigned on_break_cont:1;
 	unsigned on_error_cont:1;
+	unsigned on_termsize_cont:1;
 	unsigned autorun:1;
 	unsigned executing:1;
 	unsigned child_process:1;

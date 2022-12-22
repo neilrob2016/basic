@@ -169,14 +169,12 @@ int comRenum(int comnum, st_runline *runline)
 	char linestr[20];
 	int gap;
 	int linenum;
-	int start;
-	int start_set;
 	int pc;
 	int err;
 	int num_tokens;
+	int start = 0;
+	int start_set = 0;
 
-	start = 0;
-	start_set = 0;
 	if (runline->num_tokens > 1)
 	{
 		pc = 1;
@@ -299,8 +297,8 @@ int comEdit(int comnum, st_runline *runline)
 	st_token *next_token;
 	char str[20];
 	bool add_colon;
-	int pc;
 	int err;
+	int pc;
 	int i;
 
 	if (runline->parent->linenum) return ERR_NOT_ALLOWED_IN_PROG;
@@ -496,10 +494,9 @@ int comWrap(int comnum, st_runline *runline)
 int comIndent(int comnum, st_runline *runline)
 {
 	st_value result;
-	int pc;
 	int err;
+	int pc = 1;
 
-	pc = 1;
 	initValue(&result);
 	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
 		return err;
@@ -1675,13 +1672,12 @@ int comRestore(int comnum, st_runline *runline)
 {
 	st_value result;
 	st_progline *pl;
-	int pc;
 	int err;
 	int linenum;
+	int pc = 1;
 	
 	/* Get line number */
 	initValue(&result);
-	pc = 1;
 	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
 		return err;
 		
@@ -1772,11 +1768,10 @@ int comCont(int comnum, st_runline *runline)
 int comLoad(int comnum, st_runline *runline)
 {
 	st_value result;
-	int pc;
-	int err;
 	int linenum;
+	int err;
+	int pc = 1;
 
-	pc = 1;
 	if ((err = getRunLineValue(
 		runline,
 		&pc,VAL_STR,comnum == COM_CHAIN ? EITHER : TRUE,&result)) != OK)
@@ -1823,12 +1818,11 @@ int comSave(int comnum, st_runline *runline)
 	char *filename;
 	char *tmp;
 	char *ptr;
-	int pc;
 	int err;
+	int pc = 1;
 
 	if (!prog_first_line) return ERR_NOTHING_TO_SAVE;
 
-	pc = 1;
 	if ((err = getRunLineValue(runline,&pc,VAL_STR,TRUE,&result)) != OK)
 		return err;
 
@@ -2203,27 +2197,21 @@ int comInput(int comnum, st_runline *runline)
 	char cstr[2];
 	char *str;
 	char c;
-	int err;
 	int pc;
-	int fd;
-	int snum;
 	int index[MAX_INDEXES];
 	int esc_cnt;
 	int seq_num;
 	int mod_index;
-	bool dir_read;
-	bool insert;
-	bool set_value;
-	double start;
-	double end;
-	double sleep_time;
+	/* Pre initialisations to prevent gcc warnings */
+	int snum = -1;
+	int fd = STDIN;
+	int err = OK;
+	bool dir_read = FALSE;
+	bool set_value = FALSE;
+	bool insert = TRUE;
+	double start = 0;
+	double sleep_time = 0;
 
-	err = OK;
-	fd = STDIN; 
-	snum = -1;
-	dir_read = FALSE;
-	set_value = FALSE;
-	sleep_time = 0;
 	setValue(eof_var->value,VAL_NUM,NULL,0);
 	setValue(interrupted_var->value,VAL_NUM,NULL,0);
 
@@ -2269,7 +2257,6 @@ int comInput(int comnum, st_runline *runline)
 	token = &runline->tokens[pc];
 	if (!token->var && (err = getOrCreateTokenVariable(token))) return err;
 
-	insert = TRUE;
 	initValue(&result);
 	initValue(&icnt_or_key);
 	tvptr = NULL;
@@ -2346,36 +2333,11 @@ int comInput(int comnum, st_runline *runline)
 		FD_SET(fd,&mask);
 		start = getCurrentTime();
 
-		SELECT:
 		switch(select(FD_SETSIZE,&mask,0,0,tvptr))
 		{
 		case -1:
-			/* Ignore term resize signals if no ON TERMSIZE set */
-			if (last_signal == SIGWINCH)
-			{
-				setTermVariables();
-				if (tvptr)
-				{
-					end = getCurrentTime();
-					sleep_time = sleep_time - (end - start);
-					tvptr->tv_sec = (int)sleep_time;
-					tvptr->tv_usec = (sleep_time - tvptr->tv_sec) * 1000000;
-					start = end;
-					goto SELECT;
-				}
-			    	if (!on_termsize_goto && !on_termsize_gosub)
-				{
-					last_signal = 0;
-					continue;
-				}
-			}
-			err = ERR_READ;
-			goto DONE;
-
 		case 0:
-			/* Timeout */
 			goto DONE;
-
 		default:
 			switch(read(fd,&c,1))
 			{
@@ -3123,7 +3085,7 @@ int comOn(int comnum, st_runline *runline)
 	int pc;
 
 	token = &runline->tokens[1];
-	assert(token->type == TOK_COM);
+	if (token->type != TOK_COM) return ERR_SYNTAX;
 
 	is_cont = IS_COM_TYPE(&runline->tokens[2],COM_CONT);
 	is_break = IS_COM_TYPE(&runline->tokens[2],COM_BREAK);
@@ -3137,16 +3099,16 @@ int comOn(int comnum, st_runline *runline)
 		if (is_cont)
 		{
 			flags.on_error_cont = TRUE;
-			on_error_goto = NULL;
-			on_error_gosub = NULL;
+			on_jump[ERR_GOTO] = NULL;
+			on_jump[ERR_GOSUB] = NULL;
 			return OK;
 		}
 		/* ON ERROR BREAK */
 		if (is_break)
 		{
 			flags.on_error_cont = FALSE;
-			on_error_goto = NULL;
-			on_error_gosub = NULL;
+			on_jump[ERR_GOTO] = NULL;
+			on_jump[ERR_GOSUB] = NULL;
 			return OK;
 		}
 		break;
@@ -3155,16 +3117,16 @@ int comOn(int comnum, st_runline *runline)
 		if (is_cont)
 		{
 			flags.on_break_cont = TRUE;
-			on_break_goto = NULL;
-			on_break_gosub = NULL;
+			on_jump[BRK_GOTO] = NULL;
+			on_jump[BRK_GOSUB] = NULL;
 			return OK;
 		}
 		/* ON BREAK BREAK */
 		if (is_break)
 		{
 			flags.on_break_cont = FALSE;
-			on_break_goto = NULL;
-			on_break_gosub = NULL;
+			on_jump[BRK_GOTO] = NULL;
+			on_jump[BRK_GOSUB] = NULL;
 			return OK;
 		}
 		/* This works alongside the other ON BREAK options so don't
@@ -3179,8 +3141,17 @@ int comOn(int comnum, st_runline *runline)
 		/* ON TERMSIZE CONT */
 		if (is_cont)
 		{
-			on_termsize_goto = NULL;
-			on_termsize_gosub = NULL;
+			flags.on_termsize_cont = 1;
+			on_jump[TERM_GOTO] = NULL;
+			on_jump[TERM_GOSUB] = NULL;
+			return OK;
+		}
+		/* ON TERMSIZE BREAK */
+		if (is_break)
+		{
+			flags.on_termsize_cont = 0;
+			on_jump[TERM_GOTO] = NULL;
+			on_jump[TERM_GOSUB] = NULL;
 			return OK;
 		}
 		break;
@@ -3205,17 +3176,17 @@ int comOn(int comnum, st_runline *runline)
 		{
 		case COM_ERROR:
 			flags.on_error_cont = FALSE;
-			on_error_goto = progline;
-			on_error_gosub = NULL;
+			on_jump[ERR_GOTO] = progline;
+			on_jump[ERR_GOSUB] = NULL;
 			break;
 		case COM_BREAK:
 			flags.on_break_cont = FALSE;
-			on_break_goto = progline;
-			on_break_gosub = NULL;
+			on_jump[BRK_GOTO] = progline;
+			on_jump[BRK_GOSUB] = NULL;
 			break;
 		case COM_TERMSIZE:
-			on_termsize_goto = progline;
-			on_termsize_gosub = NULL;
+			on_jump[TERM_GOTO] = progline;
+			on_jump[TERM_GOSUB] = NULL;
 			break;
 		default:
 			assert(0);
@@ -3227,17 +3198,17 @@ int comOn(int comnum, st_runline *runline)
 	{
 	case COM_ERROR:
 		flags.on_error_cont = FALSE;
-		on_error_goto = NULL;
-		on_error_gosub = progline;
+		on_jump[ERR_GOTO] = NULL;
+		on_jump[ERR_GOSUB] = progline;
 		break;
 	case COM_BREAK:
 		flags.on_break_cont = FALSE;
-		on_break_goto = NULL;
-		on_break_gosub = progline;
+		on_jump[BRK_GOTO] = NULL;
+		on_jump[BRK_GOSUB] = progline;
 		break;
 	case COM_TERMSIZE:
-		on_termsize_goto = NULL;
-		on_termsize_gosub = progline;
+		on_jump[TERM_GOTO] = NULL;
+		on_jump[TERM_GOSUB] = progline;
 		break;
 	default:
 		assert(0);
@@ -3265,9 +3236,6 @@ int comAngleType(int comnum, st_runline *runline)
 int comSleep(int comnum, st_runline *runline)
 {
 	st_value result;
-	double start;
-	double end;
-	double sleep_time;
 	int pc;
 	int err;
 
@@ -3279,24 +3247,7 @@ int comSleep(int comnum, st_runline *runline)
 		return err;
 
 	if (result.dval < 0) return ERR_INVALID_ARG;
-
-	start = getCurrentTime();
-	sleep_time = result.dval * 1000000;
-
-	while(1)
-	{
-		if (usleep((long)sleep_time) != -1) return OK;
-
-		if (last_signal != SIGWINCH ||
-		    on_termsize_goto || on_termsize_gosub) return ERR_SLEEP;
-		if (last_signal == SIGWINCH) setTermVariables();
-
-		/* Try and recover after interrupt */
-		last_signal = 0;
-		end = getCurrentTime();
-		sleep_time = sleep_time - (end - start) * 1000000;
-		start = end;
-	}
+	usleep((long)(result.dval * 1000000));
 	return OK;
 }
 

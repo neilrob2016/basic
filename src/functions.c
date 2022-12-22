@@ -138,6 +138,7 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 		initValue(result);
 		setValue(result,VAL_NUM,NULL,pnum);
 	}
+	setValue(interrupted_var->value,VAL_NUM,NULL,0);
 	err = (*function[func].funcptr)(func,var,vallist,result);
 	*pc = pc2+1;
 	start_token->fp_checked = TRUE;
@@ -1218,7 +1219,7 @@ int funcPadStr(int func, st_var **var, st_value *vallist, st_value *result)
 }
 
 
-/******************************** FILESYSTEM  ******************************/
+/******************************** FILESYSTEM *******************************/
 
 /*** Open a file and return the BASIC stream number ***/
 int funcOpen(int func, st_var **var, st_value *vallist, st_value *result)
@@ -1522,8 +1523,6 @@ int funcSelect(int func, st_var **var, st_value *vallist, st_value *result)
 	int fd;
 	int i;
 	int j;
-
-	setValue(interrupted_var->value,VAL_NUM,NULL,0);
 
 	if (!var[0]->index_cnt) return ERR_VAR_IS_NOT_ARRAY;
 

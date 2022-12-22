@@ -106,30 +106,19 @@ bool execRunLine(st_runline *runline)
 		if (flags.on_break_cont) return TRUE;
 
 		/* If break handlers set use them */
-		if (on_break_goto)
+		if (on_jump[BRK_GOTO])
 		{
-			setNewRunLine(on_break_goto->first_runline);
+			setNewRunLine(on_jump[BRK_GOTO]->first_runline);
 			return TRUE;
 		}
-		if (on_break_gosub)
+		if (on_jump[BRK_GOSUB])
 		{
-			if (pushGosub(on_break_gosub,runline)) return TRUE;
+			if (pushGosub(on_jump[BRK_GOSUB],runline)) return TRUE;
 			doError(ERR_MAX_RECURSION,runline->parent);
 		}
-		else
-		{
-			if (runline->parent->linenum)
-			{
-				if (flags.child_process)
-				{
-					printf("*** BREAK in line %d, pid %u ***\n",
-						runline->parent->linenum,getpid());
-				}
-				else printf("*** BREAK in line %d ***\n",
-					runline->parent->linenum);
-			}
-			else puts("*** BREAK ***");
-		}
+		else if (runline->parent->linenum) goto BREAK_AT_LINE;
+		else puts("*** BREAK ***");
+
 		return FALSE;
 
 	case SIGWINCH:
@@ -138,16 +127,20 @@ bool execRunLine(st_runline *runline)
 		setValue(interrupted_var->value,VAL_NUM,NULL,1);
 		setTermVariables();
 
-		if (on_termsize_goto)
+		if (flags.on_termsize_cont)
 		{
-			setNewRunLine(on_termsize_goto->first_runline);
-			return TRUE;
+			if (on_jump[TERM_GOTO])
+			{
+				setNewRunLine(on_jump[TERM_GOTO]->first_runline);
+				return TRUE;
+			}
+			if (on_jump[TERM_GOSUB])
+			{
+				if (pushGosub(on_jump[TERM_GOSUB],runline)) return TRUE;
+				doError(ERR_MAX_RECURSION,runline->parent);
+			}
 		}
-		if (on_termsize_gosub)
-		{
-			if (pushGosub(on_termsize_gosub,runline)) return TRUE;
-			doError(ERR_MAX_RECURSION,runline->parent);
-		}
+		else goto BREAK_AT_LINE;
 		break;
 	}
 
@@ -161,14 +154,14 @@ bool execRunLine(st_runline *runline)
 		if (flags.on_error_cont) return TRUE;
 
 		/* See if error handlers set */
-		if (on_error_goto)
+		if (on_jump[ERR_GOTO])
 		{
-			setNewRunLine(on_error_goto->first_runline);
+			setNewRunLine(on_jump[ERR_GOTO]->first_runline);
 			return TRUE;
 		}
-		else if (on_error_gosub)
+		else if (on_jump[ERR_GOSUB])
 		{
-			if (pushGosub(on_error_gosub,runline)) return TRUE;
+			if (pushGosub(on_jump[ERR_GOSUB],runline)) return TRUE;
 			err = ERR_MAX_RECURSION;
 		}
 		doError(err,runline->parent);
@@ -176,6 +169,16 @@ bool execRunLine(st_runline *runline)
 	}
 
 	return TRUE;
+
+	BREAK_AT_LINE:
+	if (flags.child_process)
+	{
+		printf("*** BREAK in line %d, pid %u ***\n",
+			runline->parent->linenum,getpid());
+	}
+	else printf("*** BREAK in line %d ***\n",runline->parent->linenum);
+
+	return FALSE;
 }
 
 

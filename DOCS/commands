@@ -705,10 +705,8 @@ This inputs an entire line from stdin or a stream - \n is the terminator. eg:
    30 INPUT name
    40 PRINT "Your name is ",name
 
-This resets the $interrupted system variable to 0 before it starts. Note that
-if this command is interrupted any text typed so far is lost. Until this is
-fixed you'll need to use CINPUT and construct your own string character by
-charecter if this is a problem.
+This resets the $interrupted system variable to 0 before it starts but see
+programs/input3.bas to see how to work around this.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 PDIR  [<directory path>]
@@ -1001,10 +999,12 @@ CLEAR: This deletes all user variables which can be useful if you don't wish
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ON TERMSIZE GOTO/GOSUB <line>
 ON TERMSIZE CONT
+ON TERMSIZE BREAK
 
 As the other ON commands except that it happens when the terminal size is
 changed. Note that once a jump line is set INPUT and SLEEP will be interrupted
 when a size change occurs and you'll have to account for this in your code.
+To reset to default behaviour enter "ON TERMSIZE CONT".
 
 See: programs/termsize.bas
 
@@ -1069,4 +1069,6 @@ Sleep for the given number of seconds which can have a fractional value. eg:
 
 SLEEP 0.5
 
+This will exit early if an interrupt occurs however see programs/sleep.bas to
+see how to get around this problem.
 

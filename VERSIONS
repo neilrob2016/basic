@@ -235,3 +235,14 @@ December 2022
 - Code updates including reducing gcc warnings and moving flags into a bitfield
   struct.
 - Updated some example programs
+
+
+1.7.4
+- Added ON TERMSIZE BREAK construct.
+- Simplified internal signal handling which changes behaviour of INPUT slightly
+  when a signal occurs.
+- Removed invalid assertion in comOn().
+- Renamed termsize*.bas example programs to on_termsize*.bas and updated some
+  other example programs.
+- Added programs/sleep.bas
+- Internal code updates.

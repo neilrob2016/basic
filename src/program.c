@@ -52,15 +52,12 @@ void subInitProgram()
 
 void initOnSettings()
 {
+	int i;
+	flags.on_break_clear = FALSE;
 	flags.on_break_cont = FALSE;
 	flags.on_error_cont = FALSE;
-	flags.on_break_clear = FALSE;
-	on_error_goto = NULL;
-	on_error_gosub = NULL;
-	on_break_goto = NULL;
-	on_break_gosub = NULL;
-	on_termsize_goto = NULL;
-	on_termsize_gosub = NULL;
+	flags.on_termsize_cont = TRUE;
+	for(i=0;i < NUM_ON_JUMPS;++i) on_jump[i] = NULL;
 }
 
 

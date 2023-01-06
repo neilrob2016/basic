@@ -184,7 +184,7 @@ bool execRunLine(st_runline *runline)
 
 
 
-static bool pushGosub(st_progline *progline, st_runline *runline)
+bool pushGosub(st_progline *progline, st_runline *runline)
 {
 	if (return_stack_cnt == MAX_RETURN_STACK) return FALSE;
 	setNewRunLine(progline->first_runline);

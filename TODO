@@ -1,3 +1,0 @@
-ON TIMER <secs> GOTO/GOSUB construct
-allow 1 line IFs in code with no FI
-GOTO/GOSUB string labels

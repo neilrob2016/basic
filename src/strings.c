@@ -1,5 +1,8 @@
 #include "globals.h"
 
+#define FILE_EXT     ".bas"
+#define FILE_EXT_LEN 4
+
 
 /*** See if the string contains a valid number ***/
 int numType(char *str)

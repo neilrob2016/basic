@@ -8,8 +8,8 @@ CC=cc -D NO_OS_SET
 #LIBS=-lm -lcrypt
 
 # MacOS
-CC=cc $(LFA)
-LIBS=-lm 
+#CC=cc $(LFA)
+#LIBS=-lm 
 
 # ARM
 #CC=aarch64-poky-linux-gcc --sysroot=/opt/fsl-imx-wayland/4.19-warrior/sysroots/aarch64-poky-linux

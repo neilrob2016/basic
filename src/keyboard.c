@@ -440,7 +440,7 @@ int getEscapeSeq(char *seq, int len)
 
 /********************************* STATICS **********************************/
 
-static int prevKeyLine(int l)
+int prevKeyLine(int l)
 {
 	int i;
 	int pos;
@@ -457,7 +457,7 @@ static int prevKeyLine(int l)
 
 
 
-static int nextKeyLine(int l)
+int nextKeyLine(int l)
 {
 	int i;
 	int pos;
@@ -473,7 +473,7 @@ static int nextKeyLine(int l)
 
 
 
-static void copyKeyLine(int from, int to)
+void copyKeyLine(int from, int to)
 {
 	st_keybline *fromline = &keyb_line[from];
 	st_keybline *toline = &keyb_line[to];
@@ -492,7 +492,7 @@ static void copyKeyLine(int from, int to)
 
 
 
-static void drawKeyLineSection(char *from, char *to)
+void drawKeyLineSection(char *from, char *to)
 {
 	char *s;
 	for(s=from;s <= to;++s) PRINT(s,1);
@@ -503,7 +503,7 @@ static void drawKeyLineSection(char *from, char *to)
 
 
 
-static void clearScreenLine(int l)
+void clearScreenLine(int l)
 {
 	int i;
 	PRINT("\r",1);
@@ -518,7 +518,7 @@ static void clearScreenLine(int l)
 
 /*** If a user does !<number> we copy the numbered historic command into the
      keyboard buffer to run ***/
-static bool copyHistoricCommand(int input_pos)
+bool copyHistoricCommand(int input_pos)
 {
 	int pos;
 	int histnum;

@@ -135,30 +135,47 @@ void drawRect(
 
 
 
+/*** More complex than the previous algo but writes less to the terminal ***/
 void drawCircle(int x, int y, int radius, int fill, char *str, int slen)
 {
 	double ang;
-	int xp;
+	int xp1;
+	int xp2;
 	int yp;
 	int prev_xp = 0;
 	int prev_yp = 0;
-	int cnt;
 	int i;
 
-	cnt = (fill ? radius : 1);
-	for(i=0;i < cnt;++i)
+	for(ang=0;ang < 180;++ang)
 	{
-		for(ang=0;ang < 360;++ang)
+		xp1 = (double)x + sin((ang + 180)/ DEGS_PER_RADIAN) * radius;
+		xp2 = (double)x + sin(ang / DEGS_PER_RADIAN) * radius;
+		yp = (double)y + cos(ang / DEGS_PER_RADIAN) * radius;
+
+		if (xp1 == prev_xp && yp == prev_yp) continue;
+		prev_xp = xp1;
+		prev_yp = yp;
+
+		if (fill)
 		{
-			xp = (double)x + sin(ang) * radius;
-			yp = (double)y + cos(ang) * radius;
-			if (xp != prev_xp || yp != prev_yp)
+			if (slen == 1)
 			{
-				drawString(xp,yp,str,slen);
-				prev_xp = xp;
-				prev_yp = yp;
+				/* Single character fill */
+				locate(xp1,yp);
+				for(i=xp1;i < xp2;++i) PRINT(str,1);
+			}
+			else for(i=xp1;i <= xp2 - slen;++i)
+			{
+				locate(i,yp);
+				PRINT(str,slen);
 			}
 		}
-		--radius;
+		else
+		{
+			locate(xp1,yp);
+			PRINT(str,slen);
+			locate(xp2 - slen,yp);
+			PRINT(str,slen);
+		}
 	}
 }

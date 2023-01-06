@@ -533,7 +533,7 @@ int comClear(int comnum, st_runline *runline)
 	{
 		token = &runline->tokens[pc];
 		if (!IS_VAR(token)) return ERR_INVALID_ARG;
-		if (!(var = getVariable(token->str))) return ERR_UNDEFINED_VAR;
+		if (!(var = getVariable(token->str))) return ERR_UNDEFINED_VAR_FUNC;
 		deleteVariable(var,runline);
 
 		if (++pc == runline->num_tokens) return OK;
@@ -589,7 +589,7 @@ int comDimLet(int comnum, st_runline *runline)
 			    !(token->var = getVariable(token->str)) &&
 			    strict_mode)
 			{
-				return ERR_UNDEFINED_VAR;
+				return ERR_UNDEFINED_VAR_FUNC;
 			}
 			break;
 
@@ -757,7 +757,7 @@ int comRedim(int comnum, st_runline *runline)
 		/* Variable must be defined to REDIM it */
 		if (!token->var && !(token->var = getVariable(token->str)))
 		{
-			err = ERR_UNDEFINED_VAR;
+			err = ERR_UNDEFINED_VAR_FUNC;
 			goto ERROR;
 		}
 
@@ -1557,7 +1557,7 @@ int comRead(int comnum, st_runline *runline)
 		if (!IS_VAR(token)) return ERR_SYNTAX;
 		if (!token->var && !(token->var = getVariable(token->str)))
 		{
-			if (strict_mode) return ERR_UNDEFINED_VAR;
+			if (strict_mode) return ERR_UNDEFINED_VAR_FUNC;
 			create_var = 1;
 		}
 		else create_var = 0;
@@ -2209,7 +2209,6 @@ int comInput(int comnum, st_runline *runline)
 	bool dir_read = FALSE;
 	bool set_value = FALSE;
 	bool insert = TRUE;
-	double start = 0;
 	double sleep_time = 0;
 
 	setValue(eof_var->value,VAL_NUM,NULL,0);
@@ -2310,6 +2309,8 @@ int comInput(int comnum, st_runline *runline)
 		}
 	}
 
+	set_value = TRUE;
+
 	/* If its a directory read can't use select() or timeout. Do it now */
 	if (dir_read)
 	{
@@ -2324,14 +2325,12 @@ int comInput(int comnum, st_runline *runline)
 	}
 
 	esc_cnt = 0;
-	set_value = TRUE;
 
 	/* Wait for input then set variable */
 	while(1)
 	{
 		FD_ZERO(&mask);
 		FD_SET(fd,&mask);
-		start = getCurrentTime();
 
 		switch(select(FD_SETSIZE,&mask,0,0,tvptr))
 		{
@@ -3057,7 +3056,7 @@ int comDelKey(int comnum, st_runline *runline)
 
 	token = &runline->tokens[1];
 	if (!token->var && !(token->var = getVariable(token->str)))
-		return ERR_UNDEFINED_VAR;
+		return ERR_UNDEFINED_VAR_FUNC;
 
 	initValue(&result);
 	pc = 3;
@@ -3399,7 +3398,7 @@ int comKillAll(int comnum, st_runline *runline)
 
 /********************************* STATICS *********************************/
 
-static int doComRun(int comnum, st_runline *runline, int pc)
+int doComRun(int comnum, st_runline *runline, int pc)
 {
 	st_value result;
 	int err;
@@ -3443,7 +3442,7 @@ static int doComRun(int comnum, st_runline *runline, int pc)
 
 
 /*** Saves duplicated code ***/
-static int getRunLineValue(
+int getRunLineValue(
 	st_runline *runline, int *pc, int type, int eol, st_value *result)
 {
 	int err;
@@ -3473,7 +3472,7 @@ static int getRunLineValue(
 
 
 /*** Find the matching end block command ***/
-static bool setBlockEnd(st_runline *runline, int start_com, int end_com)
+bool setBlockEnd(st_runline *runline, int start_com, int end_com)
 {
 	st_runline *rl;
 	st_runline *end_rl;

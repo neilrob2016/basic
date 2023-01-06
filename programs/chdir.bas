@@ -1,5 +1,5 @@
-   10 IF NOT chdir("/tmp") THEN 
-   20     PRINT "ERROR: chdir(): ",syserror$($syserror)
+   10 IF chdir$("/tm*") = "" THEN 
+   20     PRINT "ERROR: chdir$(): ",syserror$($syserror)
    30     STOP 
    40 FI 
    50 DIM fd = open("test","w")

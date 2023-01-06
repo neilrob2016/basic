@@ -4,12 +4,11 @@
    40     REPEAT 
    50         start = time()
    60         CINPUT c,secs
-   70         inter = $interrupted: ' Save as reset on next function
-   80         secs = secs - (time() - start)
-   90     UNTIL NOT inter OR secs <= 0
-  100     IF c THEN 
-  110         PRINT "Key pressed: ",c
-  120     ELSE 
-  130         PRINT "No input"
-  140     FI 
-  150 WEND 
+   70         secs = secs - (time() - start)
+   80     UNTIL NOT $interrupted OR secs <= 0
+   90     IF c THEN 
+  100         PRINT "Key pressed: ",c
+  110     ELSE 
+  120         PRINT "No input"
+  130     FI 
+  140 WEND 

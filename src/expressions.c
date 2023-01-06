@@ -204,7 +204,7 @@ int evalExpression(st_runline *runline, int *pc, st_value *result)
 
 
 
-static int getValue(st_runline *runline, int *pc, st_value *result)
+int getValue(st_runline *runline, int *pc, st_value *result)
 {
 	st_token *token;
 	st_value icnt_or_key;
@@ -229,7 +229,7 @@ static int getValue(st_runline *runline, int *pc, st_value *result)
 
 	case TOK_VAR:
 		if (!token->var && !(token->var = getVariable(token->str)))
-			return ERR_UNDEFINED_VAR;
+			return ERR_UNDEFINED_VAR_FUNC;
 
 		/* Get array index if there is one */
 		if (++*pc < runline->num_tokens && 
@@ -277,7 +277,7 @@ static int getValue(st_runline *runline, int *pc, st_value *result)
 
 /*** Evaluate entire stack down where whats left has lower precendence levels. 
      Returns 0 or 1 ***/
-static int evalStack(
+int evalStack(
 	int min_prec,
 	st_value *val_stack, 
 	int *op_stack, int *val_stack_cnt, int *op_stack_cnt)
@@ -493,8 +493,7 @@ static int evalStack(
 
 
 /*** Evaluate from the top down ***/
-static void evalPreOpStack(
-	int *pre_op_stack, int pre_op_stack_cnt, st_value *result)
+void evalPreOpStack(int *pre_op_stack, int pre_op_stack_cnt, st_value *result)
 {
 	int i;
 
@@ -511,7 +510,7 @@ static void evalPreOpStack(
 
 
 
-static void clearStack(st_value *stack, int cnt)
+void clearStack(st_value *stack, int cnt)
 {
 	int i;
 	for(i=0;i < cnt;++i) clearValue(stack);
@@ -522,7 +521,7 @@ static void clearStack(st_value *stack, int cnt)
 
 /*** Used when we need to skip the RHS of the AND clause in order to do lazy 
      evaluation ***/
-static int skipRHSofAND(st_runline *runline, int pc, bool *is_end)
+int skipRHSofAND(st_runline *runline, int pc, bool *is_end)
 {
 	st_token *token;
 	st_token *start_token = NULL;
@@ -583,7 +582,7 @@ static int skipRHSofAND(st_runline *runline, int pc, bool *is_end)
 
 /* Can only end on an operator if its a comma, semi colon or close right 
    bracket. Can also end on certain sub commands. */
-static inline bool isEndOfExpression(st_token *token)
+inline bool isEndOfExpression(st_token *token)
 {
 	return IS_OP_TYPE(token,OP_COMMA) || 
 	       IS_OP_TYPE(token,OP_SEMI_COLON) || 

@@ -6,7 +6,7 @@
    60 fd = open(file,"r")
    70 IF NOT fd THEN 
    80     PRINT "Can't open file: ",syserror$($syserror)
-   90     STOP 
+   90     GOTO 50
   100 FI 
   110 ' 
   120 CINPUT #fd,char
@@ -17,8 +17,9 @@
   170 WEND 
   180 ' 
   190 CLOSE fd
-  200 PRINT "*** DONE ***"
-  210 STOP 
+  200 PRINT "-------------"
+  210 GOTO 50
   220 ' 
   230 PRINT "Error: ",error$($error),": ",syserror$($syserror)
   240 CLOSE fd
+  250 GOTO 50

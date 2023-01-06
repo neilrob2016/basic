@@ -115,7 +115,7 @@ int matchPath(int type, char *pat, char *matchpath, bool toplevel)
 
 		/* At end of pattern. Check final file for type. Treat links
 		   as files. */
-		if (!type || stat_type == type || 
+		if (type == S_ANY || stat_type == type || 
 		    (type == S_IFREG && stat_type == S_IFLNK))
 		{
 			if (!copyStr(matchpath,path,PATH_MAX))
@@ -134,7 +134,7 @@ int matchPath(int type, char *pat, char *matchpath, bool toplevel)
 
 
 
-static int appendPath(char *to, char *add)
+int appendPath(char *to, char *add)
 {
 	int len = PATH_MAX - strlen(to);
 	if (len <= 0) return ERR_FILENAME_TOO_LONG;
@@ -145,7 +145,7 @@ static int appendPath(char *to, char *add)
 
 
 
-static char *getUserDir(char *name, char *matchpath)
+char *getUserDir(char *name, char *matchpath)
 {
 	struct passwd *pwd;
 	char *ptr;

@@ -558,22 +558,25 @@ read/written to or not. eg:
    PRINT canread(fd)
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-CHDIR(<directory path>)
+CHDIR$(<directory path>)
 
-This changes the working directory. On success it returns 1 else 0 with
-$syserror set. eg:
+This changes the working directory. Wildcards and tilda are supported. On 
+success it returns the wildcard expanded path else empty string. 
+eg:
 
-   EVAL chdir("/tmp")
-   PRINT getdir()
-   EVAL system("pwd")
+] print chdir$("/tm*")
+/tmp
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-GETDIR()
+GETDIR$()
 
-This returns the current working directory. If an error occurs (highly unlikely)
-then an empty string is returned and $syserror is set. eg:
+This returns the fully qualified current working directory. If an error occurs 
+(highly unlikely) then an empty string is returned and $syserror is set. eg:
 
-   PRINT getdir()
+] print chdir$("/tm*")
+/tmp
+] print getdir$()
+/private/tmp
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 LSTAT$(<filesystem object>)
@@ -582,35 +585,67 @@ STAT$(<filesystem object>)
 These return information about a file system object such as a file or directory.
 The LSTAT function is like STAT except in the case where the named file is a 
 symbolic link - LSTAT returns information about the link, while STAT returns 
-information about the file the link references. The information returned in a
-string is as follows:
+information about the file the link references. Wildcards and tilda are 
+supported.
+
+The information returned in a string is as follows:
 
 <type> <mode> <uid> <user name> <gid> <group name> <size> <last access time>
 <last modified time> <last status change time> <number of hard links>
+<expanded filename>
 
 eg:
 
-] print stat$("/")
-DIR 0755 0 root 0 wheel 1292 1452187111 1450350083 1450350083 36
+] print stat$("/tm*")
+DIR 1777 0 root 0 wheel 192 1672826748 1672824467 1672824467 6 /tmp
 ]
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-MKDIR(<directory path>)
+CHMOD(<path>,<permissions>)
 
-This creates a new directory with the given path name. Wildcards are not
-supported and neither are directory permissions (setting file permissions is
-not supported at all in BASIC currently). The directory is created with full
-rwx permissions minus the users umask. On success 1 is returned else 0 with
-$syserror set. eg:
+Change the permissions of a file system object. Special bits can be included.
+Wilcards and tilda are supported.
 
-   IF NOT mkdir("/blah") THEN PRINT syserror$($syserror) FI
+Eg:
+
+] print chmod(".",07777)
+1
+] print stat$(".")
+DIR 7777 501 neil 20 staff 1504 1673004435 1673004252 1673004470 47 ./.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-OPEN(<filename>,<mode>)
+UMASK(<permissions>)
+
+Sets the current umask and returns the value of the old one. This doesn't
+change the mask of the calling process.
+
+Eg:
+
+] print oct$(umask(04022))
+22
+] print oct$(umask(0))
+4022
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+MKDIR(<directory path>[,<directory permissions>])
+
+This creates a new directory with the given path name. Wildcards and tilda are
+NOT currently supported. The directory permissions are an octal value from 0000
+to 0777 but can be expressed as an integer. If not given they default to 0777.
+The users umask is subtracted from it to give the actual permissions. The 
+permissions can include the special bits but these have no effect. Use CHMOD() 
+to change those.
+
+On success 1 is returned else 0 with $syserror set. eg:
+
+   IF NOT mkdir("/bl*",0500) THEN PRINT syserror$($syserror) FI
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+OPEN(<filename>,<operation>[,<permissions>])
 
 This opens the file and returns a stream number that can be used with other
-filesystem functions and the PRINT, INPUT, CINPUT and CLOSE commands. The modes 
-are:
+filesystem functions and the PRINT, INPUT, CINPUT and CLOSE commands. The 
+operations are:
 
  r : Read only
  w : Write only. Truncate file if it exists first else create it.
@@ -618,37 +653,40 @@ are:
  rw: Read and write to a file. Don't truncate.
  a : Append to file
 
+The file permissions are as with MKDIR() above except the default value is 
+00666. They are only use when creating a new file and have no use when
+reading. They can include the special bits but these have no effect. Use
+CHMOD() to change those.
+
 eg:
-   DIM fd = open("wibble","w")
+   DIM fd = open("wibble","w",0444)
    PRINT #1,"hello world"
 
-Note that the tilda shortcut (~) for the users home directory is not currently
-supported - use getenv$("HOME") instead. Also setting file permissions is not 
-supported in BASIC - all files created default to rw-rw-rw minus the users
-umask.
- 
+Wildcards and tilda (~) are supported for read only mode. Eg:
+
+   DIM fd = open("?ibb*","r")
+
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 OPENDIR(<directory name>)
 
 This opens a directory to read the names of the filesystem objects inside it.
-Each filename is read with a single INPUT call.
+Each filename is read with a single INPUT call. Wildcards and tilda are 
+supported. 
+
 eg:
 
-   DIM fd = opendir(".")
-
-As per OPEN(), tilda is not supported. See programs/dir.bas for further 
-examples.
+   DIM fd = opendir("/tm*")
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-RMDIR(<directory name>)
-RMFILE(<file name>)
+RMDIR$(<directory name>)
+RMFILE$(<file name>)
 
 These functions remove a directory and file respectively and can take wildcard
 names (though they will only remove ONE file/dir). If the function succeeds it 
-returns the name of the file/dir it deleted, else it returns 0 and sets 
-$syserror. eg:
+returns the name of the file/dir it deleted, else it returns an empty string 
+and sets $syserror. eg:
 
-   10 DIM file = rmfile("/etc/pas*")
+   10 DIM file = rmfile$("/etc/pas*")
    20 IF file = "" THEN 
    30     IF $syserror THEN 
    40         PRINT "ERROR: ",syserror$($syserror)

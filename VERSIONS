@@ -246,3 +246,20 @@ December 2022
   other example programs.
 - Added programs/sleep.bas
 - Internal code updates.
+
+
+January 2023
+============
+1.8.0
+- Added chmod() and umask() functions
+- Renamed rmdir(), rmfile(), getdir() and chdir() to rmdir$(), rmfile$(), 
+  getdir$() and chdir$()
+- Wildcards now supported in chdir$(), opendir(), open(), stat$() and lstat$()
+- Added optional file permissions parameters to open() and mkdir() 
+- Fixed broken opendir() function
+- Fixed broken open() function with read and rw mode
+- Fixed broken -a command line option
+- Improved efficiency of CIRCLE command
+- Misc internal code updates
+- Renamed timer.bas to speed.bas
+- Removed unnecessary code from input3.bas

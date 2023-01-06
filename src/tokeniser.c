@@ -215,7 +215,7 @@ st_progline *tokenise(char *line)
 /*** Check End Of Line. Checks if the token is a command that can only appear 
      at the end of the line. If it is it adds the runline to the program, 
      creates a new runline and returns the pointer ***/
-static st_runline *checkEOLCommand(
+st_runline *checkEOLCommand(
 	st_progline *progline, st_runline *runline, st_token *token)
 {
 	if (!IS_COM(token)) return runline;
@@ -242,7 +242,7 @@ static st_runline *checkEOLCommand(
 
 /*** Check Start Of Line. As above except it does it for start of line 
      commands. Which is pretty much all of them ***/
-static st_runline *checkSOLCommand(
+st_runline *checkSOLCommand(
 	st_progline *progline, st_runline *runline, st_token *token)
 {
 	st_runline *new_runline;
@@ -301,7 +301,7 @@ static st_runline *checkSOLCommand(
 
 /*** Check specific commands have the required max/min number of tokens and
      have the correct format. Saves doing it all the time during a run. ***/
-static bool commandSanityCheck(st_progline *progline)
+bool commandSanityCheck(st_progline *progline)
 {
 	st_runline *runline;
 	st_token *token;
@@ -468,7 +468,7 @@ static bool commandSanityCheck(st_progline *progline)
 
 /******************************** OPERATORS *******************************/
 
-static bool isSingleCharOp(char c)
+bool isSingleCharOp(char c)
 {
 	int i;
 
@@ -480,7 +480,7 @@ static bool isSingleCharOp(char c)
 
 /******************************** PROGRAM LINE *******************************/
 
-static st_progline *createProgLine()
+st_progline *createProgLine()
 {
 	st_progline *progline;
 
@@ -498,7 +498,7 @@ static st_progline *createProgLine()
 
 
 /*** Add the run line to the program line ***/
-static void addRunLineToProgLine(st_progline *progline, st_runline *runline)
+void addRunLineToProgLine(st_progline *progline, st_runline *runline)
 {
 	if (!runline->num_tokens) return;
 
@@ -518,7 +518,7 @@ static void addRunLineToProgLine(st_progline *progline, st_runline *runline)
 
 
 /*** Make sure each runline has matching brackets ***/
-static int countBrackets(st_progline *progline)
+int countBrackets(st_progline *progline)
 {
 	st_runline *runline;
 	st_token *token;
@@ -546,7 +546,7 @@ static int countBrackets(st_progline *progline)
 
 /********************************** RUN LINE *********************************/
 
-static st_runline *createRunLine(st_progline *progline)
+st_runline *createRunLine(st_progline *progline)
 {
 	st_runline *runline;
 
@@ -560,7 +560,7 @@ static st_runline *createRunLine(st_progline *progline)
 
 
 
-static st_token *createToken(st_runline *runline)
+st_token *createToken(st_runline *runline)
 {
 	st_token *token;
 
@@ -581,7 +581,7 @@ static st_token *createToken(st_runline *runline)
 
 
 /*** End token not used , get rid of it ***/
-static void deleteEndToken(st_runline *runline)
+void deleteEndToken(st_runline *runline)
 {
 	st_token *token = &runline->tokens[--runline->num_tokens];
 	clearToken(token);
@@ -592,7 +592,7 @@ static void deleteEndToken(st_runline *runline)
 
 /*** Go through tokens and amalgamate multi character tokens and deal with
      negative numbers ***/
-static void processTokens(st_runline *runline)
+void processTokens(st_runline *runline)
 {
 	st_token *tok1;
 	st_token *tok2;
@@ -703,7 +703,7 @@ void deleteRunLine(st_runline *runline, bool force)
 
 /********************************** TOKEN **********************************/
 
-static void addCharToToken(st_token *token, char c)
+void addCharToToken(st_token *token, char c)
 {
 	token->str = (char *)realloc(token->str,token->len+2);
 	assert(token->str);
@@ -715,7 +715,7 @@ static void addCharToToken(st_token *token, char c)
 
 
 /*** Set the type to command, function etc ***/
-static int setTokenType(st_token *token)
+int setTokenType(st_token *token)
 {
 	int i;
 
@@ -822,7 +822,7 @@ static int setTokenType(st_token *token)
 
 
 
-static void clearToken(st_token *token)
+void clearToken(st_token *token)
 {
 	assert(token);
 	FREE(token->str);

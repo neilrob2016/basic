@@ -1,5 +1,6 @@
 #include "globals.h"
 
+#define MAX_LINENUM    (u_int)0xFFFFFFFF  /* Max u_int value */
 #define PROGRESS_LINES 10
 
 static int  addProgLine(st_progline *progline);
@@ -754,7 +755,7 @@ int renameProgVarsAndDefExps(char *from, char *to, int *cnt)
 
 /*** Put the program line into the program linked list but also attach the
      runlines into their linked list (the entire program) too */
-static int addProgLine(st_progline *progline)
+int addProgLine(st_progline *progline)
 {
 	st_progline *pl;
 	st_progline *pl_prev;
@@ -821,7 +822,7 @@ static int addProgLine(st_progline *progline)
 
 
 /*** Update linked list pointers either side of the line ***/
-static void removeProgLine(st_progline *progline)
+void removeProgLine(st_progline *progline)
 {
 	if (progline->prev)
 	{
@@ -846,7 +847,7 @@ static void removeProgLine(st_progline *progline)
 
 
 /*** Reset jump pointers and delete any for loop structs ***/
-static void resetProgPointers()
+void resetProgPointers()
 {
 	st_runline *runline;
 	int i;
@@ -869,7 +870,7 @@ static void resetProgPointers()
 
 
 
-static void spacePad(FILE *fp, int len)
+void spacePad(FILE *fp, int len)
 {
 	int i;
 	for(i=0;i < len;++i) putc(' ',fp);

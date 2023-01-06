@@ -59,8 +59,8 @@
 #endif
 
 #define INTERPRETER "NRJ-BASIC"
-#define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2022"
-#define VERSION     "1.7.4"
+#define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
+#define VERSION     "1.8.0"
 
 #define STDIN  0
 #define STDOUT 1
@@ -96,7 +96,6 @@
 #define MAX_RETURN_STACK  1000
 #define MAX_INDEXES       5
 #define MAX_FUNC_PARAMS   10
-#define MAX_LINENUM       (u_int)0xFFFFFFFF  /* Max u_int value */
 #define VAL_FIXED_STR_LEN 20
 #define CHAR_ALLOC        50
 
@@ -115,14 +114,12 @@
 #define MAX_STREAMS     20
 #define MAX_DIR_STREAMS 10
 
-/* Anything not in this list is already an operator */
-#define INVALID_NAME_CHARS "`'$&!?{}[].\\"
-
-#define FILE_EXT     ".bas"
-#define FILE_EXT_LEN 4
-
 #define NUM_F_KEYS  5
 #define DEFMOD_SIZE (255 + NUM_F_KEYS)
+
+#define DEGS_PER_RADIAN 57.2957795
+
+#define S_ANY 0
 
 /********************************* STRUCTURES ********************************/
 
@@ -300,7 +297,7 @@ enum
 	/* 5 */
 	ERR_MISSING_PARAMS,
 	ERR_TOO_MANY_PARAMS,
-	ERR_UNDEFINED_VAR,
+	ERR_UNDEFINED_VAR_FUNC,
 	ERR_VAR_ALREADY_DEF,
 	ERR_VAR_IS_NOT_ARRAY,
 
@@ -418,6 +415,7 @@ enum
 
 	/* 90 */
 	ERR_INVALID_PATH,
+	ERR_INVALID_FILE_PERMS,
 
 	NUM_ERRORS
 };
@@ -436,7 +434,7 @@ char *error_str[NUM_ERRORS] =
 	/* 5 */
 	"Missing function parameters",
 	"Too many function parameters",
-	"Undefined variable",
+	"Undefined variable or function",
 	"Variable already defined",
 	"Variable is not an array",
 
@@ -553,7 +551,8 @@ char *error_str[NUM_ERRORS] =
 	"RENAME can only rename variables and DEFEXPs",
 
 	/* 90 */
-	"Invalid path or path not found"
+	"Invalid path or path not found",
+	"Invalid file/directory permissions"
 };
 #else
 extern char *error_str[NUM_ERRORS];
@@ -1050,57 +1049,61 @@ enum
 
 	/* 65 */
 	FUNC_LSTAT,
+	FUNC_CHMOD,
+	FUNC_UMASK,
 	FUNC_CANREAD,
 	FUNC_CANWRITE,
-	FUNC_SELECT,
-	FUNC_RAND,
 
 	/* 70 */
+	FUNC_SELECT,
+	FUNC_RAND,
 	FUNC_RANDOM,
 	FUNC_TIME,
 	FUNC_DATE,
-	FUNC_DATETOSECS,
-	FUNC_POPEN,
 
 	/* 75 */
+	FUNC_DATETOSECS,
+	FUNC_POPEN,
 	FUNC_FORK,
 	FUNC_EXEC,
 	FUNC_WAITPID,
-	FUNC_CHECKPID,
-	FUNC_KILL,
 
 	/* 80 */
+	FUNC_CHECKPID,
+	FUNC_KILL,
 	FUNC_PIPE,
 	FUNC_CONNECT,
 	FUNC_LISTEN,
-	FUNC_ACCEPT,
-	FUNC_GETIP,
 
 	/* 85 */
+	FUNC_ACCEPT,
+	FUNC_GETIP,
 	FUNC_IP2HOST,
 	FUNC_HOST2IP,
 	FUNC_GETUSERBYID,
-	FUNC_GETGROUPBYID,
-	FUNC_GETUSERBYNAME,
 
 	/* 90 */
+	FUNC_GETGROUPBYID,
+	FUNC_GETUSERBYNAME,
 	FUNC_GETGROUPBYNAME,
 	FUNC_GETENV,
 	FUNC_SETENV,
-	FUNC_SYSTEM,
-	FUNC_SYSINFO,
 
 	/* 95 */
+	FUNC_SYSTEM,
+	FUNC_SYSINFO,
 	FUNC_CRYPT,
 	FUNC_LPAD,
 	FUNC_RPAD,
-	FUNC_NUMSTRBASE,
-	FUNC_PATH,
 
 	/* 100 */
+	FUNC_NUMSTRBASE,
+	FUNC_PATH,
 	FUNC_HAVEDATA,
 	FUNC_REGMATCH,
 	FUNC_EXP,
+
+	/* 105 */
 	FUNC_EXP2,
 	FUNC_EXP10,
 
@@ -1127,7 +1130,7 @@ DECL_FUNC(Exp)
 DECL_FUNC(Parity)
 DECL_FUNC(MaxMin)
 DECL_FUNC(Asc)
-DECL_FUNC(Chr)
+DECL_FUNC(ChrStr)
 DECL_FUNC(InStr)
 DECL_FUNC(StrLen)
 DECL_FUNC(SubStr)
@@ -1149,7 +1152,7 @@ DECL_FUNC(ErrorStr)
 DECL_FUNC(SysErrorStr)
 DECL_FUNC(ResErrorStr)
 DECL_FUNC(UpperLowerStr)
-DECL_FUNC(Element)
+DECL_FUNC(ElementStr)
 DECL_FUNC(ReplaceStr)
 DECL_FUNC(InsertStr)
 DECL_FUNC(FormatStr)
@@ -1160,11 +1163,14 @@ DECL_FUNC(ToNum)
 DECL_FUNC(ToStr)
 DECL_FUNC(Open)
 DECL_FUNC(OpenDir)
-DECL_FUNC(GetDir)
-DECL_FUNC(ChMkDir)
+DECL_FUNC(GetDirStr)
+DECL_FUNC(ChDirStr)
+DECL_FUNC(MkDir)
 DECL_FUNC(Seek)
-DECL_FUNC(RmFileOrDir)
+DECL_FUNC(RmFileOrDirStr)
 DECL_FUNC(StatStr)
+DECL_FUNC(ChMod)
+DECL_FUNC(Umask)
 DECL_FUNC(CanRW)
 DECL_FUNC(Select)
 DECL_FUNC(Rand)
@@ -1175,7 +1181,7 @@ DECL_FUNC(DateToSecs)
 DECL_FUNC(Fork)
 DECL_FUNC(Exec)
 DECL_FUNC(Popen)
-DECL_FUNC(WaitCheck)
+DECL_FUNC(WaitCheckStr)
 DECL_FUNC(Kill)
 DECL_FUNC(Pipe)
 DECL_FUNC(Connect)
@@ -1225,12 +1231,12 @@ st_func function[NUM_FUNCTIONS] =
 	{ "LOG",            1, { VAL_NUM }, funcLog },
 	{ "HYPOT",          2, { VAL_NUM, VAL_NUM }, funcHypot },
 	{ "PARITY",         1, { VAL_NUM }, funcParity },
-	{ "MAX",           -2, { VAL_NUM }, funcMaxMin },
-	{ "MIN",           -2, { VAL_NUM }, funcMaxMin },
+	{ "MAX",           -2, { VAL_NUM, VAL_NUM }, funcMaxMin },
+	{ "MIN",           -2, { VAL_NUM, VAL_NUM }, funcMaxMin },
 
 	/* 20 */
 	{ "ASC",            1, { VAL_STR }, funcAsc },
-	{ "CHR$",           1, { VAL_NUM }, funcChr },
+	{ "CHR$",           1, { VAL_NUM }, funcChrStr },
 	{ "INSTR",          3, { VAL_STR, VAL_STR, VAL_NUM }, funcInStr },
 	{ "SUB$",           3, { VAL_STR, VAL_NUM, VAL_NUM }, funcSubStr },
 	{ "LEFT$",          2, { VAL_STR, VAL_NUM }, funcLeftStr },
@@ -1261,89 +1267,93 @@ st_func function[NUM_FUNCTIONS] =
 	{ "RESERROR$",      1, { VAL_NUM }, funcResErrorStr },
 	{ "UPPER$",         1, { VAL_STR }, funcUpperLowerStr },
 	{ "LOWER$",         1, { VAL_STR }, funcUpperLowerStr },
-	{ "ELEMENT$",       2, { VAL_STR, VAL_NUM }, funcElement },
+	{ "ELEMENT$",       2, { VAL_STR, VAL_NUM }, funcElementStr },
 
 	/* 45 */
-	{ "ELEMENTCNT",     1, { VAL_STR }, funcElement },
+	{ "ELEMENTCNT",     1, { VAL_STR }, funcElementStr },
 	{ "REPLACE$",       3, { VAL_STR, VAL_STR, VAL_STR }, funcReplaceStr },
 	{ "REPLACEFR$",     4, { VAL_STR, VAL_STR, VAL_STR, VAL_NUM }, funcReplaceStr },
 	{ "INSERT$",        3, { VAL_STR, VAL_STR, VAL_NUM }, funcInsertStr },
 	{ "FORMAT$",        2, { VAL_STR, VAL_NUM }, funcFormatStr },
 
 	/* 50 */
-	{ "MAX$",          -2, { VAL_STR }, funcMaxMinStr },
-	{ "MIN$",          -2, { VAL_STR }, funcMaxMinStr },
+	{ "MAX$",          -2, { VAL_STR, VAL_STR }, funcMaxMinStr },
+	{ "MIN$",          -2, { VAL_STR, VAL_STR }, funcMaxMinStr },
 	{ "ARRSIZE",        1, { VAL_UNDEF }, funcArrSize },
 	{ "MAPSIZE",        1, { VAL_UNDEF }, funcMapSize },
 	{ "TONUM",          1, { VAL_STR }, funcToNum },
 
 	/* 55 */
 	{ "TOSTR$",         1, { VAL_NUM }, funcToStr },
-	{ "OPEN",           2, { VAL_STR, VAL_STR }, funcOpen },
+	{ "OPEN",          -2, { VAL_STR, VAL_STR }, funcOpen },
 	{ "OPENDIR",        1, { VAL_STR }, funcOpenDir },
-	{ "GETDIR",         0, { VAL_UNDEF }, funcGetDir },
-	{ "CHDIR",          1, { VAL_STR }, funcChMkDir },
+	{ "GETDIR$",        0, { VAL_UNDEF }, funcGetDirStr },
+	{ "CHDIR$",         1, { VAL_STR }, funcChDirStr },
 
 	/* 60 */
-	{ "MKDIR",          1, { VAL_STR }, funcChMkDir },
+	{ "MKDIR",         -1, { VAL_STR }, funcMkDir },
 	{ "SEEK",           2, { VAL_NUM, VAL_NUM }, funcSeek },
-	{ "RMFILE",         1, { VAL_STR }, funcRmFileOrDir },
-	{ "RMDIR",          1, { VAL_STR }, funcRmFileOrDir },
+	{ "RMFILE$",        1, { VAL_STR }, funcRmFileOrDirStr },
+	{ "RMDIR$",         1, { VAL_STR }, funcRmFileOrDirStr },
 	{ "STAT$",          1, { VAL_STR }, funcStatStr },
 
 	/* 65 */
 	{ "LSTAT$",         1, { VAL_STR }, funcStatStr },
+	{ "CHMOD",          2, { VAL_STR, VAL_NUM }, funcChMod },
+	{ "UMASK",          1, { VAL_NUM }, funcUmask },
 	{ "CANREAD",        1, { VAL_NUM }, funcCanRW },
 	{ "CANWRITE",       1, { VAL_NUM }, funcCanRW },
-	{ "SELECT",         3, { VAL_UNDEF, VAL_UNDEF, VAL_NUM }, funcSelect },
-	{ "RAND",           0, { VAL_UNDEF }, funcRand },
 
 	/* 70 */
+	{ "SELECT",         3, { VAL_UNDEF, VAL_UNDEF, VAL_NUM }, funcSelect },
+	{ "RAND",           0, { VAL_UNDEF }, funcRand },
 	{ "RANDOM",         1, { VAL_NUM }, funcRandom },
 	{ "TIME",           0, { VAL_UNDEF }, funcTime },
 	{ "DATE$",          2, { VAL_NUM, VAL_STR }, funcDateStr },
-	{ "DATETOSECS",     2, { VAL_STR, VAL_STR }, funcDateToSecs },
-	{ "POPEN",          2, { VAL_STR, VAL_STR }, funcPopen },
 
 	/* 75 */
+	{ "DATETOSECS",     2, { VAL_STR, VAL_STR }, funcDateToSecs },
+	{ "POPEN",          2, { VAL_STR, VAL_STR }, funcPopen },
 	{ "FORK",           0, { VAL_UNDEF }, funcFork },
 	{ "EXEC",           2, { VAL_STR, VAL_UNDEF }, funcExec },
-	{ "WAITPID$",       1, { VAL_NUM }, funcWaitCheck },
-	{ "CHECKPID$",      1, { VAL_NUM }, funcWaitCheck },
-	{ "KILL",           2, { VAL_NUM, VAL_NUM }, funcKill },
+	{ "WAITPID$",       1, { VAL_NUM }, funcWaitCheckStr },
 
 	/* 80 */
+	{ "CHECKPID$",      1, { VAL_NUM }, funcWaitCheckStr },
+	{ "KILL",           2, { VAL_NUM, VAL_NUM }, funcKill },
 	{ "PIPE",           1, { VAL_UNDEF }, funcPipe },
 	{ "CONNECT",        1, { VAL_STR }, funcConnect },
 	{ "LISTEN",         2, { VAL_NUM, VAL_NUM }, funcListen },
-	{ "ACCEPT",         1, { VAL_NUM }, funcAccept },
-	{ "GETIP$",         1, { VAL_NUM }, funcGetIPStr },
 
 	/* 85 */
+	{ "ACCEPT",         1, { VAL_NUM }, funcAccept },
+	{ "GETIP$",         1, { VAL_NUM }, funcGetIPStr },
 	{ "IP2HOST$",       1, { VAL_STR }, funcIP2HostStr },
 	{ "HOST2IP$",       1, { VAL_STR }, funcHost2IPStr },
 	{ "GETUSERBYID$",   1, { VAL_NUM }, funcGetUserStr },
-	{ "GETGROUPBYID$",  1, { VAL_NUM }, funcGetGroupStr },
-	{ "GETUSERBYNAME$", 1, { VAL_STR }, funcGetUserStr }, 
 
 	/* 90 */
+	{ "GETGROUPBYID$",  1, { VAL_NUM }, funcGetGroupStr },
+	{ "GETUSERBYNAME$", 1, { VAL_STR }, funcGetUserStr }, 
 	{ "GETGROUPBYNAME$",1, { VAL_STR }, funcGetGroupStr },
 	{ "GETENV$",        1, { VAL_STR }, funcGetEnvStr },
 	{ "SETENV",         2, { VAL_STR, VAL_STR }, funcSetEnv },
-	{ "SYSTEM",         1, { VAL_STR }, funcSystem },
-	{ "SYSINFO$",       1, { VAL_STR }, funcSysInfoStr },
 
 	/* 95 */
+	{ "SYSTEM",         1, { VAL_STR }, funcSystem },
+	{ "SYSINFO$",       1, { VAL_STR }, funcSysInfoStr },
 	{ "CRYPT$",         3, { VAL_STR, VAL_STR, VAL_STR }, funcCryptStr },
 	{ "LPAD$",          3, { VAL_STR, VAL_STR, VAL_NUM }, funcPadStr },
 	{ "RPAD$",          3, { VAL_STR, VAL_STR, VAL_NUM }, funcPadStr },
-	{ "NUMSTRBASE",     1, { VAL_STR }, funcNumStrBase },
-	{ "PATH$",          1, { VAL_STR }, funcPathStr },
 
 	/* 100 */
+	{ "NUMSTRBASE",     1, { VAL_STR }, funcNumStrBase },
+	{ "PATH$",          1, { VAL_STR }, funcPathStr },
 	{ "HAVEDATA",       0, { VAL_UNDEF }, funcHaveData },
 	{ "REGMATCH",       2, { VAL_STR,VAL_STR }, funcRegMatch },
 	{ "EXP",            1, { VAL_NUM }, funcExp },
+
+	/* 105 */
 	{ "EXP2",           1, { VAL_NUM }, funcExp },
 	{ "EXP10",          1, { VAL_NUM }, funcExp }
 };

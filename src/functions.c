@@ -1,6 +1,6 @@
 #include "globals.h"
 
-#define DEGS_PER_RADIAN 57.2957795
+#define MAX_PERMS 07777
 
 #define FIND_FREE_STREAM(S) \
 	for(S=0;S < MAX_STREAMS && stream[S];++S); \
@@ -13,6 +13,7 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 	st_var *var[MAX_FUNC_PARAMS];
 	st_token *token;
 	st_token *start_token;
+	int num_params;
 	int func;
 	int pc2;
 	int pnum;
@@ -55,7 +56,8 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 	}
 
 	/* Get the function parameters */
-	for(pnum=0;function[func].num_params && pc2 < runline->num_tokens;++pc2)
+	num_params = abs(function[func].num_params);
+	for(pnum=0;num_params && pc2 < runline->num_tokens;++pc2)
 	{
 		/* < 0 means variadic function where all parameters must be the
 		   same type and min number of params is abs(num_params) */
@@ -66,11 +68,36 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 				err = ERR_TOO_MANY_PARAMS;
 				goto ERROR;
 			}
-			ptype = function[func].param_type[0];
+			/* With variadics all arguments are the same type 
+			   except for open() and mkdir() which have optional
+			   numeric permissions parameters */
+			if (pnum >= num_params)
+			{
+				if (func == FUNC_OPEN)
+				{
+					if (pnum > 2)
+					{
+						err = ERR_TOO_MANY_PARAMS;
+						goto ERROR;
+					}
+					ptype = VAL_NUM;
+				}
+				else if (func == FUNC_MKDIR)
+				{
+					if (pnum > 1)
+					{
+						err = ERR_TOO_MANY_PARAMS;
+						goto ERROR;
+					}
+					ptype = VAL_NUM;
+				}
+				else ptype = function[func].param_type[0];
+			}
+			else ptype = function[func].param_type[0];
 		}
 		else 
 		{
-			if (pnum >= function[func].num_params)
+			if (pnum >= num_params)
 			{
 				err = ERR_TOO_MANY_PARAMS;
 				goto ERROR;
@@ -91,7 +118,7 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 			if (!token->var && 
 			    !(token->var = getVariable(token->str)))
 			{
-				err = ERR_UNDEFINED_VAR;
+				err = ERR_UNDEFINED_VAR_FUNC;
 				goto ERROR;
 			}
 			var[pnum] = token->var;
@@ -111,8 +138,7 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 			}
 		}
 		++pnum;
-		if (start_token->fp_checked && 
-		    pnum == function[func].num_params) break;
+		if (start_token->fp_checked && pnum == num_params) break;
 
 		/* End? */
 		if (IS_OP_TYPE(&runline->tokens[pc2],OP_R_BRACKET)) break;
@@ -125,7 +151,7 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 		}
 	}
 
-	if (pnum < abs(function[func].num_params))
+	if (pnum < num_params)
 	{
 		err = ERR_MISSING_PARAMS;
 		goto ERROR;
@@ -138,7 +164,6 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 		initValue(result);
 		setValue(result,VAL_NUM,NULL,pnum);
 	}
-	setValue(interrupted_var->value,VAL_NUM,NULL,0);
 	err = (*function[func].funcptr)(func,var,vallist,result);
 	*pc = pc2+1;
 	start_token->fp_checked = TRUE;
@@ -352,6 +377,8 @@ int funcMaxMin(int func, st_var **var, st_value *vallist, st_value *result)
 	int i;
 
 	val = vallist[0].dval;
+
+	/* Number of args is passed in result->dval. Yes, hacky. */
 	for(i=1;i < result->dval;++i)
 	{
 		if ((func == FUNC_MAX && vallist[i].dval > val) ||
@@ -441,7 +468,7 @@ int funcAsc(int func, st_var **var, st_value *vallist, st_value *result)
 
 
 
-int funcChr(int func, st_var **var, st_value *vallist, st_value *result)
+int funcChrStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	char text[2];
 
@@ -597,7 +624,7 @@ int funcStripStr(int func, st_var **var, st_value *vallist, st_value *result)
 
 
 
-/*** Returns 1 if the value is numeric/string ***/
+/*** Sets result to 1 if the value is numeric/string ***/
 int funcIsType(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	setValue(
@@ -611,7 +638,8 @@ int funcIsType(int func, st_var **var, st_value *vallist, st_value *result)
 
 
 
-/*** Returns 1 or 0 depending on whether the string contains a valid number ***/
+/*** Sets result to 1 or 0 depending on whether the string contains a valid 
+     number ***/
 int funcIsNumStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	setValue(result,VAL_NUM,NULL,numType(vallist[0].sval) != NOT_NUM);
@@ -896,7 +924,7 @@ int funcUpperLowerStr(
 
 /*** Returns the element at the given position for ELEMENT$() or returns the
      count of elements for ELEMENTCNT() ***/
-int funcElement(int func, st_var **var, st_value *vallist, st_value *result)
+int funcElementStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	char *s;
 	char *e;
@@ -1224,39 +1252,52 @@ int funcPadStr(int func, st_var **var, st_value *vallist, st_value *result)
 /*** Open a file and return the BASIC stream number ***/
 int funcOpen(int func, st_var **var, st_value *vallist, st_value *result)
 {
+	char filename[PATH_MAX+1];
 	char *flagstr;
+	bool match = FALSE;
+	mode_t perms = 0666;
 	int oflags;
 	int fd;
-	int mode = 0;
 	int snum;
-
+	
 	flagstr = vallist[1].sval;
-	if (!strcmp(flagstr,"r")) oflags = O_RDONLY;
+	if (!strcmp(flagstr,"r"))
+	{
+		oflags = O_RDONLY;
+		match = TRUE;
+	}
 	else if (!strcmp(flagstr,"o"))  /* Overwrite - don't truncate first */
-	{
 		oflags = O_CREAT | O_WRONLY;
-		mode = 0666;
-	}
 	else if (!strcmp(flagstr,"w"))
-	{
 		oflags = O_CREAT | O_TRUNC | O_WRONLY;
-		mode = 0666;
-	}
 	else if (!strcmp(flagstr,"a"))
-	{
 		oflags = O_CREAT | O_APPEND | O_WRONLY;
-		mode = 0666;
-	}
-	else if (!strcmp(flagstr,"rw")) oflags = O_RDWR;
+	else if (!strcmp(flagstr,"rw"))
+		oflags = O_RDWR;
 	else return ERR_INVALID_ARG;
 
-	FIND_FREE_STREAM(snum);
- 
-	/* Don't throw an error if can't open file - just set syserror */
-	if ((fd = open(vallist[0].sval,oflags,mode)) == -1)
+	/* If we have file permissions then sanity check */
+	if (result->dval > 2)
 	{
-		setValue(result,VAL_NUM,NULL,0);
+		perms = (mode_t)vallist[2].dval;
+		if (perms < 0 || perms > MAX_PERMS)
+			return ERR_INVALID_FILE_PERMS;
+	}
+
+	FIND_FREE_STREAM(snum);
+
+	setValue(syserror_var->value,VAL_NUM,NULL,0);
+
+	/* Wildcards allowed for read. If no match just pass through to
+	   open() and let it error */
+	if (!match || matchPath(S_IFREG,vallist[0].sval,filename,TRUE) != OK)
+		copyStr(filename,vallist[0].sval,PATH_MAX);
+
+	/* Don't throw an error if can't open file - just set syserror */
+	if ((fd = open(filename,oflags,perms)) == -1)
+	{
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_NUM,NULL,0);
 		return OK;
 	}
 	stream[snum] = fd;
@@ -1274,17 +1315,24 @@ int funcOpen(int func, st_var **var, st_value *vallist, st_value *result)
 
 int funcOpenDir(int func, st_var **var, st_value *vallist, st_value *result)
 {
+	char filename[PATH_MAX+1];
 	int snum;
 	
 	for(snum=0;snum < MAX_DIR_STREAMS;++snum) if (!dir_stream[snum]) break;
 	if (snum == MAX_DIR_STREAMS) return ERR_MAX_DIR_STREAMS;
 
-	/* As for open() , don't error if we can't open dir, just return
+	setValue(syserror_var->value,VAL_NUM,NULL,0);
+
+	/* Wildcards allowed */
+	if (matchPath(S_IFDIR,vallist[0].sval,filename,TRUE) != OK)
+		copyStr(filename,vallist[0].sval,PATH_MAX);
+
+	/* As with open() don't just error if we can't open dir, return
 	   zero and set system error */
-	if (!(dir_stream[snum] = opendir(vallist[0].sval)))
+	if (!(dir_stream[snum] = opendir(filename)))
 	{
-		setValue(result,VAL_NUM,NULL,0);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_NUM,NULL,0);
 		return OK;
 	}
 
@@ -1297,7 +1345,7 @@ int funcOpenDir(int func, st_var **var, st_value *vallist, st_value *result)
 
 
 
-int funcGetDir(int func, st_var **var, st_value *vallist, st_value *result)
+int funcGetDirStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	char buff[PATH_MAX+1];
 	char *dir;
@@ -1305,8 +1353,8 @@ int funcGetDir(int func, st_var **var, st_value *vallist, st_value *result)
 	if (!(dir = getcwd(buff,PATH_MAX)))
 	{
 		/* Note VAL_STR - we return an empty string on error */
-		setValue(result,VAL_STR,NULL,0);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_STR,NULL,0);
 	}
 	else setValue(result,VAL_STR,dir,0);
 
@@ -1316,23 +1364,49 @@ int funcGetDir(int func, st_var **var, st_value *vallist, st_value *result)
 
 
 
-/*** Change directory or make one ***/
-int funcChMkDir(int func, st_var **var, st_value *vallist, st_value *result)
+/*** Change directory ***/
+int funcChDirStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
-	int ret;
+	char filename[PATH_MAX+1];
 
-	if (func == FUNC_MKDIR)
-		ret = mkdir(vallist[0].sval,0777);
-	else
-		ret = chdir(vallist[0].sval);
+	setValue(syserror_var->value,VAL_NUM,NULL,0);
 
-	if (ret == -1)
+	if (matchPath(S_IFDIR,vallist[0].sval,filename,TRUE) != OK)
+		copyStr(filename,vallist[0].sval,PATH_MAX);
+
+	if (chdir(filename) == -1)
 	{
-		setValue(result,VAL_NUM,NULL,0);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_STR,"",0);
 	}
-	else setValue(result,VAL_NUM,NULL,1);
+	else setValue(result,VAL_STR,filename,0);
+	return OK;
+}
 
+
+
+
+/*** Create a new directory ***/
+int funcMkDir(int func, st_var **var, st_value *vallist, st_value *result)
+{
+	mode_t perms;
+
+	/* If we have permissions then sanity check */
+	if (result->dval > 1)
+	{
+		perms = (mode_t)vallist[1].dval;
+		if (perms < 0 || perms > MAX_PERMS)
+			return ERR_INVALID_FILE_PERMS;
+	}
+	else perms = 0777;
+
+	setValue(syserror_var->value,VAL_NUM,NULL,0);
+	if (mkdir(vallist[0].sval,perms) == -1)
+	{
+		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_NUM,"",0);
+	}
+	else setValue(result,VAL_NUM,"",1);
 	return OK;
 }
 
@@ -1360,13 +1434,13 @@ int funcSeek(int func, st_var **var, st_value *vallist, st_value *result)
 	/* If not -1 then offset is the offset from the start of the file */
 	if ((offset = lseek(fd,(off_t)vallist[1].dval,SEEK_SET)) == -1)
 	{
-		setValue(result,VAL_NUM,NULL,-1);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_NUM,NULL,-1);
 	}
 	else
 	{
-		setValue(result,VAL_NUM,NULL,offset);
 		setValue(syserror_var->value,VAL_NUM,NULL,0);
+		setValue(result,VAL_NUM,NULL,offset);
 	}
 
 	return OK;
@@ -1377,7 +1451,8 @@ int funcSeek(int func, st_var **var, st_value *vallist, st_value *result)
 
 /*** Delete a file or directory. Returns the name of the object deleted else
      returns empty string if it failed ***/
-int funcRmFileOrDir(int func, st_var **var, st_value *vallist, st_value *result)
+int funcRmFileOrDirStr(
+	int func, st_var **var, st_value *vallist, st_value *result)
 {
 	char filename[PATH_MAX+1];
 
@@ -1387,17 +1462,50 @@ int funcRmFileOrDir(int func, st_var **var, st_value *vallist, st_value *result)
 		(func == FUNC_RMFILE) ? S_IFREG : S_IFDIR,
 		vallist[0].sval,filename,TRUE) != OK)
 	{
-		setValue(result,VAL_STR,"",0);
-		return OK;
+		copyStr(filename,vallist[0].sval,PATH_MAX);
 	}
 
 	if (remove(filename) == -1)
 	{
-		setValue(result,VAL_STR,"",0);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_STR,"",0);
 	}
 	else setValue(result,VAL_STR,filename,0);
 
+	return OK;
+}
+
+
+
+
+int funcChMod(int func, st_var **var, st_value *vallist, st_value *result)
+{
+	char filename[PATH_MAX+1];
+	mode_t perms;
+
+	setValue(syserror_var->value,VAL_NUM,NULL,0);
+
+	perms = (mode_t)vallist[1].dval;
+	if (perms < 0 || perms > MAX_PERMS) return ERR_INVALID_FILE_PERMS;
+
+	/* Expand wildcards */
+	if (matchPath(S_ANY,vallist[0].sval,filename,TRUE) != OK)
+		copyStr(filename,vallist[0].sval,PATH_MAX);
+
+	setValue(result,VAL_NUM,"",chmod(filename,perms) == -1 ? 0 : 1);
+	return OK;
+}
+
+
+
+
+/*** Returns the previous umask in the result ***/
+int funcUmask(int func, st_var **var, st_value *vallist, st_value *result)
+{
+	mode_t perms = (mode_t)vallist[0].dval;
+	if (perms < 0 || perms > MAX_PERMS) return ERR_INVALID_FILE_PERMS;
+
+	setValue(result,VAL_NUM,"",umask(perms));
 	return OK;
 }
 
@@ -1409,21 +1517,28 @@ int funcStatStr(int func, st_var **var, st_value *vallist, st_value *result)
 	struct stat fs;
 	struct passwd *pwd;
 	struct group *grp;
+	char filename[PATH_MAX+1];
 	char str[PATH_MAX+100];
 	char *ftype;
 	int ret;
 
+	setValue(syserror_var->value,VAL_NUM,NULL,0);
+
+	/* Expand wildcards */
+	if (matchPath(S_ANY,vallist[0].sval,filename,TRUE) != OK)
+		copyStr(filename,vallist[0].sval,PATH_MAX);
+
 	if (func == FUNC_STAT)
-		ret = stat(vallist[0].sval,&fs);
+		ret = stat(filename,&fs);
 	else
-		ret = lstat(vallist[0].sval,&fs);
+		ret = lstat(filename,&fs);
 
 	/* If we can't stat a file return an empty string and set the 
 	   system errror */
 	if (ret == -1)
 	{
-		setValue(result,VAL_STR,"",0);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_STR,"",0);
 		return OK;
 	}
 
@@ -1444,7 +1559,7 @@ int funcStatStr(int func, st_var **var, st_value *vallist, st_value *result)
 	pwd = getpwuid(fs.st_uid);
 	grp = getgrgid(fs.st_gid);
 
-	snprintf(str,sizeof(str)-1,"%s %04o %u %s %u %s %lu %lu %lu %lu %lu",
+	snprintf(str,sizeof(str)-1,"%s %04o %u %s %u %s %lu %lu %lu %lu %lu %s",
 		ftype,
 		(u_short)fs.st_mode & 0xFFF,
 		fs.st_uid,
@@ -1455,18 +1570,19 @@ int funcStatStr(int func, st_var **var, st_value *vallist, st_value *result)
 		(long)fs.st_atime,
 		(long)fs.st_mtime,
 		(long)fs.st_ctime,
-		(long)fs.st_nlink);
+		(long)fs.st_nlink,
+		filename);
 
-	setValue(result,VAL_STR,str,0);
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
+	setValue(result,VAL_STR,str,0);
 	return OK;
 }
 
 
 
 
-/*** Returns 1 if we can read/write data from/to the file descriptor.
-     Not reliable for files. ***/
+/*** Sets result to 1 if we can read/write data from/to the file descriptor
+     else 0. Not reliable for files. ***/
 int funcCanRW(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	struct timeval tv;
@@ -1495,13 +1611,13 @@ int funcCanRW(int func, st_var **var, st_value *vallist, st_value *result)
 		ret = select(FD_SETSIZE,0,&mask,0,&tv);
 	if (ret == -1)
 	{
-		setValue(result,VAL_NUM,NULL,-1);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_NUM,NULL,-1);
 	}
 	else
 	{
-		setValue(result,VAL_NUM,NULL,!!FD_ISSET(fd,&mask));
 		setValue(syserror_var->value,VAL_NUM,NULL,0);
+		setValue(result,VAL_NUM,NULL,!!FD_ISSET(fd,&mask));
 	}
 	return OK;
 }
@@ -1591,8 +1707,8 @@ int funcSelect(int func, st_var **var, st_value *vallist, st_value *result)
 			}
 		}
 	}
-	setValue(result,VAL_NUM,NULL,ret);
 	setValue(syserror_var->value,VAL_NUM,NULL,ret == -1 ? errno : 0);
+	setValue(result,VAL_NUM,NULL,ret);
 	return OK;
 }
 
@@ -1603,9 +1719,8 @@ int funcSelect(int func, st_var **var, st_value *vallist, st_value *result)
 int funcPathStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	char matchpath[PATH_MAX+1];
-	int err;
 
-	if ((err = matchPath(0,vallist[0].sval,matchpath,TRUE)) == OK)
+	if (matchPath(S_ANY,vallist[0].sval,matchpath,TRUE) == OK)
 		setValue(result,VAL_STR,matchpath,0);
 	else
 		setValue(result,VAL_STR,NULL,0);
@@ -1680,10 +1795,10 @@ int funcPopen(int func, st_var **var, st_value *vallist, st_value *result)
 
 	if (!(fp = popen(vallist[0].sval,vallist[1].sval)))
 	{
-		/* Return 0 and set syserror. Don't return an error because
+		/* Set syserror and return 0. Don't return an error because
 		   its not a BASIC error */
-		setValue(result,VAL_NUM,NULL,0);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_NUM,NULL,0);
 		return OK;
 	}
 
@@ -1725,8 +1840,8 @@ int funcFork(int func, st_var **var, st_value *vallist, st_value *result)
 		addProcessToList(pid);
 		break;
 	}
-	setValue(result,VAL_NUM,NULL,pid);
 	setValue(syserror_var->value,VAL_NUM,NULL,pid == -1 ? errno : 0);
+	setValue(result,VAL_NUM,NULL,pid);
 	return OK;
 }
 
@@ -1771,16 +1886,17 @@ int funcExec(int func, st_var **var, st_value *vallist, st_value *result)
 		execvp(b_argv[0],b_argv);
 	}
 
-	freeArgv(b_argc,b_argv);
-	setValue(result,VAL_NUM,NULL,-1);
 	setValue(syserror_var->value,VAL_NUM,NULL,errno);
+	setValue(result,VAL_NUM,NULL,-1);
+	freeArgv(b_argc,b_argv);
 	return OK;
 }
 
 
 
 
-int funcWaitCheck(int func, st_var **var, st_value *vallist, st_value *result)
+int funcWaitCheckStr(
+	int func, st_var **var, st_value *vallist, st_value *result)
 {
 	pid_t pid;
 	int status;
@@ -1791,11 +1907,11 @@ int funcWaitCheck(int func, st_var **var, st_value *vallist, st_value *result)
 		(int)vallist[0].dval,
 		&status,func == FUNC_CHECKPID ? WNOHANG : 0)) == -1)
 	{
+		setValue(syserror_var->value,VAL_NUM,NULL,errno);
 		if (errno == ECHILD)
 			setValue(result,VAL_STR,"0 NOCHILD",0);
 		else
 			setValue(result,VAL_STR,"0 ERROR",0);
-		setValue(syserror_var->value,VAL_NUM,NULL,errno);
 		return OK;
 	}
 	if (!pid) strcpy(str,"0 NOEXIT");
@@ -1833,8 +1949,8 @@ int funcKill(int func, st_var **var, st_value *vallist, st_value *result)
 	}
 	else
 	{
-		setValue(result,VAL_NUM,NULL,1);
 		setValue(syserror_var->value,VAL_NUM,NULL,0);
+		setValue(result,VAL_NUM,NULL,1);
 	}
 	return OK;
 }
@@ -1873,8 +1989,8 @@ int funcPipe(int func, st_var **var, st_value *vallist, st_value *result)
 	setValue(&var[0]->value[0],VAL_NUM,NULL,snum1+1);
 	setValue(&var[0]->value[1],VAL_NUM,NULL,snum2+1);
 
-	setValue(result,VAL_NUM,NULL,1);
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
+	setValue(result,VAL_NUM,NULL,1);
 	return OK;
 }
 
@@ -1938,9 +2054,9 @@ int funcConnect(int func, st_var **var, st_value *vallist, st_value *result)
 	/* Connect to server */
 	if (connect(sock,(struct sockaddr *)&con_addr,sizeof(con_addr)) == -1)
 	{
-		close(sock);
-		setValue(result,VAL_NUM,NULL,0);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_NUM,NULL,0);
+		close(sock);
 		return OK;
 	}
 
@@ -2185,8 +2301,8 @@ int funcSetEnv(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	if (setenv(vallist[0].sval,vallist[1].sval,1) == -1)
 	{
-		setValue(result,VAL_NUM,NULL,0);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_NUM,NULL,0);
 	}
 	else setValue(result,VAL_NUM,NULL,1);
 
@@ -2201,8 +2317,8 @@ int funcSystem(int func, st_var **var, st_value *vallist, st_value *result)
 	/* system() returns 0 for ok, -1 or 127 for fail */
 	if (system(vallist[0].sval))
 	{
-		setValue(result,VAL_NUM,NULL,0);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_NUM,NULL,0);
 	}
 	else setValue(result,VAL_NUM,NULL,1);
 	return OK;
@@ -2218,8 +2334,8 @@ int funcSysInfoStr(int func, st_var **var, st_value *vallist, st_value *result)
 
 	if (uname(&uts) == -1)
 	{
-		res = NULL;
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		res = NULL;
 	}
 	else if (!strcasecmp(vallist[0].sval,"OS"))
 		res = uts.sysname;

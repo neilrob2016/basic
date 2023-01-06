@@ -3,7 +3,7 @@
 
  An old fashioned line BASIC interpreter for Unix.
 
- Copyright (C) Neil Robertson 2016-2022
+ Copyright (C) Neil Robertson 2016-2023
  *****************************************************************************/
 
 #define MAINFILE
@@ -53,7 +53,7 @@ int main(int argc, char **argv, char **env)
 
 /********************************* STATICS *********************************/
 
-static void setBuildOptions()
+void setBuildOptions()
 {
 	build_options[0] = 0;
 #ifdef LINE_FLOAT_ALGO
@@ -75,7 +75,7 @@ static void setBuildOptions()
 
 
 
-static void parseCmdLine(int argc, char **argv)
+void parseCmdLine(int argc, char **argv)
 {
 	int i;
 
@@ -86,6 +86,7 @@ static void parseCmdLine(int argc, char **argv)
 	cmdline_run_arg = NULL;
 	strict_mode = 0;
 	kilobyte = 1000;
+	bzero(&flags,sizeof(flags));
 
 	for(i=1;i < argc;++i)
 	{
@@ -169,7 +170,7 @@ static void parseCmdLine(int argc, char **argv)
 
 
 
-static int qsortCompare(const void *p1, const void *p2)
+int qsortCompare(const void *p1, const void *p2)
 {
 	/* p1 and p2 are actually point to (char **), not (char *) */
 	return strcmp(*(char **)p1, *(char **)p2);
@@ -178,7 +179,7 @@ static int qsortCompare(const void *p1, const void *p2)
 
 
 
-static void init()
+void init()
 {
 	int size;
 	int i;
@@ -188,7 +189,6 @@ static void init()
 	bzero(keyb_line,size);
 	bzero(first_var,sizeof(first_var));
 	bzero(last_var,sizeof(last_var));
-	bzero(&flags,sizeof(flags));
 	flags.draw_prompt = TRUE;
 	first_defexp = NULL;
 	last_defexp = NULL;
@@ -226,7 +226,7 @@ static void init()
 
 
 
-static void mainloop()
+void mainloop()
 {
 	char *line;
 
@@ -256,7 +256,7 @@ static void mainloop()
 
 
 
-static void sigHandler(int sig)
+void sigHandler(int sig)
 {
 	last_signal = sig;
 
@@ -270,7 +270,7 @@ static void sigHandler(int sig)
 
 
 
-static void getTermSize(int sig)
+void getTermSize(int sig)
 {
 #ifdef TIOCGWINSZ
 	struct winsize ws;

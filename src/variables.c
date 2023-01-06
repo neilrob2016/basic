@@ -1,5 +1,8 @@
 #include "globals.h"
 
+/* Anything not in this list is already an operator */
+#define INVALID_NAME_CHARS "`'$&!?{}[].\\"
+
 /* Don't want all the system variables indexed by '$', use 2nd character
    instead */
 #define INDEX_CHAR(N) (N[0] == '$' ? N[1] : N[0])
@@ -192,7 +195,7 @@ int getOrCreateTokenVariable(st_token *token)
 	if ((token->var = getVariable(token->str))) return OK;
 
 	/* Has to be created using DIM if in strict mode */
-	if (strict_mode) return ERR_UNDEFINED_VAR;
+	if (strict_mode) return ERR_UNDEFINED_VAR_FUNC;
 	if (!validVariableName(token->str)) return ERR_INVALID_VAR_NAME;
 	token->var = createVariable(token->str,VAR_STD,0,NULL);
 	return OK;

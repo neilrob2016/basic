@@ -136,7 +136,8 @@ void drawRect(
 
 
 /*** More complex than the previous algo but writes less to the terminal ***/
-void drawCircle(int x, int y, int radius, int fill, char *str, int slen)
+void drawCircle(
+	int x, int y, int x_radius, int y_radius, int fill, char *str, int slen)
 {
 	double ang;
 	int xp1;
@@ -148,9 +149,9 @@ void drawCircle(int x, int y, int radius, int fill, char *str, int slen)
 
 	for(ang=0;ang < 180;++ang)
 	{
-		xp1 = (double)x + sin((ang + 180)/ DEGS_PER_RADIAN) * radius;
-		xp2 = (double)x + sin(ang / DEGS_PER_RADIAN) * radius;
-		yp = (double)y + cos(ang / DEGS_PER_RADIAN) * radius;
+		xp1 = (double)x + sin((ang + 180)/ DEGS_PER_RADIAN) * x_radius;
+		xp2 = (double)x + sin(ang / DEGS_PER_RADIAN) * x_radius;
+		yp = (double)y + cos(ang / DEGS_PER_RADIAN) * y_radius;
 
 		if (xp1 == prev_xp && yp == prev_yp) continue;
 		prev_xp = xp1;

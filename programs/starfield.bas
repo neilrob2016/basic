@@ -1,5 +1,5 @@
    10 ' Draw a starfield  
-   20 ON BREAK GOTO 590
+   20 ON BREAK GOTO 600
    30 ' 
    40 DIM NUM_STARS = 10
    50 DIM MAX_RADIUS = 10
@@ -27,7 +27,7 @@
   270             GOSUB 420
   280         FI 
   290         PAPER colour(i)
-  300         CIRCLE x(i),y(i),radius(i),1,"."
+  300         CIRCLE x(i),y(i),radius(i),radius(i) * 0.6,1,"."
   310         x(i) = x(i) - radius_inc(i) / 2 + xadd(i)
   320         y(i) = y(i) - radius_inc(i) / 2 + yadd(i)
   330         radius(i) = radius(i) + radius_inc(i)
@@ -56,4 +56,5 @@
   560 colour(i) = random(6) + 1
   570 RETURN 
   580 ' 
-  590 ATTR 0: LOCATE 1,1: CURSOR "on"
+  590 ' Reset terminal
+  600 ATTR 0: LOCATE 1,1: CURSOR "on"

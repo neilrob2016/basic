@@ -784,7 +784,7 @@ void renameVariable(st_var *var, char *new_name)
 
 
 /*** Dump all variables to the console ***/
-void dumpVariables(char *pat, bool dump_contents)
+void dumpVariables(FILE *fp, char *pat, bool dump_contents)
 {
 	st_var *var;
 	int c;
@@ -794,7 +794,7 @@ void dumpVariables(char *pat, bool dump_contents)
 		for(var=first_var[c];var;var=var->next)
 		{
 			if (!pat || wildMatch(var->name,pat,TRUE))
-				dumpVariable(var,dump_contents);
+				dumpVariable(fp,var,dump_contents);
 		}
 	}
 }
@@ -803,7 +803,7 @@ void dumpVariables(char *pat, bool dump_contents)
 
 
 /*** Dump a specific variable ***/
-void dumpVariable(st_var *var, bool dump_contents)
+void dumpVariable(FILE *fp, st_var *var, bool dump_contents)
 {
 	st_keyval *kv;
 	int *index;
@@ -812,7 +812,7 @@ void dumpVariable(st_var *var, bool dump_contents)
 	int i;
 	int c;
 
-	printf("%-15s",var->name);
+	fprintf(fp,"%-15s",var->name);
 
 	switch(var->type)
 	{
@@ -822,7 +822,7 @@ void dumpVariable(st_var *var, bool dump_contents)
 		{
 			for(kv=var->first_keyval[c];kv;kv=kv->next,++i);
 		}
-		printf(": MAP (%d entries)\n",i);
+		fprintf(fp,": MAP (%d entries)\n",i);
 		if (!dump_contents) return;
 
 		/* Show the entries */
@@ -830,19 +830,19 @@ void dumpVariable(st_var *var, bool dump_contents)
 		{
 			for(kv=var->first_keyval[c];kv;kv=kv->next)
 			{
-				printf("     \"%s\" = ",kv->key);
+				fprintf(fp,"   \"%s\" = ",kv->key);
 				if (kv->value.type == VAL_STR)
-					printf("\"%s\"\n",kv->value.sval);
+					fprintf(fp,"\"%s\"\n",kv->value.sval);
 				else if (IS_FLOAT(kv->value.dval))
-					printf("%f\n",kv->value.dval);
+					fprintf(fp,"%f\n",kv->value.dval);
 				else
-					printf("%ld\n",(long)kv->value.dval);
+					fprintf(fp,"%ld\n",(long)kv->value.dval);
 			}
 		}
 		return;
 
 	case VAR_MEM:
-		printf(": SHMEM (%d), id = %d, val = \"%s\"\n",
+		fprintf(fp,": SHMEM (%d), id = %d, val = \"%s\"\n",
 			var->value[0].shmlen,
 			var->value[0].shmid,
 			var->value[0].sval);
@@ -859,26 +859,26 @@ void dumpVariable(st_var *var, bool dump_contents)
 	{
 		/* Non array variable */
 		if (var->value[0].type == VAL_STR)
-			printf("= \"%s\"\n",var->value[0].sval);
+			fprintf(fp,"= \"%s\"\n",var->value[0].sval);
 		else if (IS_FLOAT(var->value[0].dval))
-			printf("= %f\n",var->value[0].dval);
+			fprintf(fp,"= %f\n",var->value[0].dval);
 		else
-			printf("= %ld\n",(long)var->value[0].dval);
+			fprintf(fp,"= %ld\n",(long)var->value[0].dval);
 		return;
 	}
 
 	/* Array */
-	printf(": ARRAY (");
+	fprintf(fp,": ARRAY (");
 
 	/* Print index sizes */
 	for(i=0;i < var->index_cnt;++i)
 	{
 		if (i)
-			printf(",%d",var->index[i]);
+			fprintf(fp,",%d",var->index[i]);
 		else
-			printf("%d",var->index[i]);
+			fprintf(fp,"%d",var->index[i]);
 	}
-	puts(")");
+	fputs(")\n",fp);
 
 	/* Can system vars like $argv with arrsize of 0 if no arguments
 	   given */
@@ -894,20 +894,20 @@ void dumpVariable(st_var *var, bool dump_contents)
 	for(ipos=0;ipos < var->arrsize;++ipos)
 	{
 		/* Print index and value */
-		printf("     (");
+		fprintf(fp,"   (");
 		for(i=0;i < var->index_cnt;++i)
 		{
-			if (i) printf(",");
-			printf("%d",index[i]);
+			if (i) fprintf(fp,",");
+			fprintf(fp,"%d",index[i]);
 		}
-		printf(") = ");
+		fprintf(fp,") = ");
 
 		if (var->value[ipos].type == VAL_STR)
-			printf("\"%s\"\n",var->value[ipos].sval);
+			fprintf(fp,"\"%s\"\n",var->value[ipos].sval);
 		else if (IS_FLOAT(var->value[ipos].dval))
-			printf("%f\n",var->value[ipos].dval);
+			fprintf(fp,"%f\n",var->value[ipos].dval);
 		else
-			printf("%ld\n",(long)var->value[ipos].dval);
+			fprintf(fp,"%ld\n",(long)var->value[ipos].dval);
 
 		/* Increment printed indexes */
 		for(i=var->index_cnt-1;i >= 0;--i)

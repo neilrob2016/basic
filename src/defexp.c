@@ -141,24 +141,24 @@ void deleteDefExps()
 
 
 /*** Dump all expressions to the console ***/
-void dumpDefExps(char *pat)
+void dumpDefExps(FILE *fp, char *pat)
 {
 	st_defexp *exp;
 	for(exp=first_defexp;exp;exp=exp->next)
-		if (!pat || wildMatch(exp->name,pat,TRUE)) dumpDefExp(exp);
+		if (!pat || wildMatch(exp->name,pat,TRUE)) dumpDefExp(fp,exp);
 }
 
 
 
 
 /*** Dump the expression to the console ***/
-void dumpDefExp(st_defexp *exp)
+void dumpDefExp(FILE *fp, st_defexp *exp)
 {
 	st_token *token;
 	st_token *next_token;
 	int i;
 
-	printf("!%-13s = ",exp->name);
+	fprintf(fp,"!%-13s = ",exp->name);
 
 	/* Tokens will be "DEFEXP <name> = ..." hence start i at 3 */
 	for(i=3;i < exp->runline->num_tokens;++i)
@@ -168,7 +168,7 @@ void dumpDefExp(st_defexp *exp)
 			next_token = &exp->runline->tokens[i+1];
 		else
 			next_token = NULL;
-		printf("%s",token->str);
+		fprintf(fp,"%s",token->str);
 
 		/* Don't print spaces after function names or before or after
 		   brackets so it looks nicer */
@@ -179,8 +179,8 @@ void dumpDefExp(st_defexp *exp)
 		      next_token->type == TOK_OP && 
 	              next_token->subtype == OP_R_BRACKET))
 		{
-			putchar(' ');
+			fputc(' ',fp);
 		}
 	}
-	putchar('\n');
+	fputc('\n',fp);
 }

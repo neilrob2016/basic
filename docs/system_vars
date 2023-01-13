@@ -39,7 +39,7 @@ $error_line   : Line where the last BASIC error occured.
 $break_line   : Line where the last break (control C) occured
 $data_line    : DATA line of RESTORE or that READ has just read from. 
                 0 if not set.
-$eof          : 1 if the eof of a file/stream has been reached
+$eof          : 1 if the eof of the last read file/stream has been reached
 $term_cols    : Terminal column (X axis) count 
 $term_rows    : Terminal row (Y axis) count
 $pi           : Value of PI

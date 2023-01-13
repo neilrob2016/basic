@@ -661,6 +661,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 			fputc('\n',fp);
 		}
 	}
+	if (fp != stdout) write(STDOUT,"\n",1);
 	return OK;
 }
 

@@ -6,6 +6,9 @@
 	if ((S) < 0 || (S) >= MAX_STREAMS) return ERR_INVALID_STREAM; \
 	if (!dir_stream[S]) return ERR_STREAM_NOT_OPEN;
 
+#define STREAM_STDIO  -1 
+#define STREAM_PRINTER -2
+
 static int  doComRun(int comnum, st_runline *runline, int pc);
 static bool setBlockEnd(st_runline *runline, int start_com, int end_com);
 static int  getRunLineValue(
@@ -55,7 +58,7 @@ int comListHistory(int comnum, st_runline *runline)
 {
 	st_value fromval;
 	st_value toval;
-	FILE *pfile;
+	FILE *pfp;
 	int pos;
 	int cnt;
 	int from;
@@ -138,9 +141,12 @@ int comListHistory(int comnum, st_runline *runline)
 		return listProgram(stdout,(u_int)from,(u_int)to,comnum == COM_PLIST);
 
 	case COM_LLIST:
-		if (!(pfile = popen("lp","w"))) return ERR_WRITE;
-		err = listProgram(pfile,(u_int)from,(u_int)to,FALSE);
-		pclose(pfile);
+		/* Only fails if fork() or pipe() fails */
+		if (!(pfp = popen("lp","w"))) return ERR_LP;
+		printf("Spooling to printer: ");
+		fflush(stdout);	
+		err = listProgram(pfp,(u_int)from,(u_int)to,FALSE);
+		pclose(pfp);
 		return err;
 
 	default:
@@ -818,36 +824,62 @@ int comRedim(int comnum, st_runline *runline)
 
 
 
-/*** Dump all variables to screen ***/
+/*** Dump all variables to the screen or printer. I thought about allowing
+     BASIC streams to output anywhere but because they use file descriptors not
+     file pointers it would be too much hassle to convert all the printfs() and
+     *put*s to sprintf() and write(). ***/
 int comDump(int comnum, st_runline *runline)
 {
+	FILE *fp;
 	st_token *token;
+	bool dump_contents;
+	int err;
 	int pc;
 
-	if (runline->num_tokens == 1)
+	if (IS_COM_TYPE(&runline->tokens[1],COM_FULL))
+	{
+		dump_contents = TRUE;
+		pc = 2;
+	}
+	else
+	{
+		dump_contents = FALSE;
+		pc = 1;
+	}
+	if (comnum == COM_LDUMP)
+	{
+		if (!(fp = popen("lp","w"))) return ERR_LP;
+		puts("Spooling to printer...");
+	}
+	else fp = stdout;
+
+	err = OK;
+	if (runline->num_tokens == 1 + dump_contents)
 	{
 		/* Dump everything */
-		dumpVariables(NULL,comnum == COM_DUMPC);
-		dumpDefExps(NULL);
-		return OK;
+		dumpVariables(fp,NULL,dump_contents);
+		dumpDefExps(fp,NULL);
+		goto DONE;
 	}
 
-	for(pc=1;pc < runline->num_tokens;++pc)
+	/* Dump specific wildcard matches */
+	for(;pc < runline->num_tokens;++pc)
 	{
 		token = &runline->tokens[pc];
 
 		/* The ! isn't part of the name so won't match */
-		if (token->str[0] == '!') dumpDefExps(token->str+1);
+		if (token->str[0] == '!') dumpDefExps(fp,token->str+1);
 		else
 		{
-			dumpVariables(token->str,comnum == COM_DUMPC);
-			dumpDefExps(token->str);
+			dumpVariables(fp,token->str,dump_contents);
+			dumpDefExps(fp,token->str);
 		}
-
-		if (++pc == runline->num_tokens) return OK;
-		if (NOT_COMMA(pc)) break;
+		if (++pc == runline->num_tokens || NOT_COMMA(pc)) break;
 	}
-	return ERR_SYNTAX;
+
+	DONE:
+	if (fp != stdout) pclose(fp);
+	return err;
 }
 
 
@@ -1853,12 +1885,11 @@ int comSave(int comnum, st_runline *runline)
 		err = ERR_CANT_OPEN_FILE;
 		goto ERROR;
 	}
-	printf("SAVING \"%s\": ",filename);
+	printf("Saving \"%s\": ",filename);
 	fflush(stdout);
 
 	err = listProgram(fp,0,0,FALSE);
 	fclose(fp);
-	putchar('\n');
 	if (err == OK) ready();
 	/* Fall through */
 
@@ -2099,6 +2130,7 @@ int comRm(int comnum, st_runline *runline)
 
 int comPrint(int comnum, st_runline *runline)
 {
+	FILE *pfp;
 	st_value result;
 	int pc;
 	int diff;
@@ -2109,24 +2141,33 @@ int comPrint(int comnum, st_runline *runline)
 	char *numstr;
 
 	initValue(&result);
+	pfp = NULL;
 
 	/* Check for a stream number */
 	if (runline->num_tokens > 2 && IS_OP_TYPE(&runline->tokens[1],OP_HASH))
 	{
 		pc = 2;
+
 		if ((err = getRunLineValue(
 			runline,&pc,VAL_NUM,FALSE,&result)) != OK)
 		{
 			return err;
 		}
-		if (result.dval >= MAX_STREAMS) return ERR_DIR_STREAM;
-		snum = result.dval - 1;
+		if ((snum = (int)result.dval) >= MAX_STREAMS)
+			return ERR_DIR_STREAM;
 
-		/* Let #0 = stdout so don't need seperate line to do stdout
-		   printing in a subroutine or whereever */
-		if (snum == -1) fd = STDOUT;
-		else
+		switch(--snum)
 		{
+		case STREAM_STDIO:
+			/* #0 = stdout. With INPUT its stdin */
+			fd = STDOUT;
+			break;
+		case STREAM_PRINTER:
+			if (!(pfp = popen("lp > /dev/null","w")))
+				return ERR_LP;
+			fd = -1;
+			break;
+		default:
 			CHECK_STREAM(snum)
 			fd = stream[snum];
 		}
@@ -2147,10 +2188,15 @@ int comPrint(int comnum, st_runline *runline)
 		if ((err = evalExpression(runline,&pc,&result)) != OK)
 		{
 			clearValue(&result);
-			return err;
+			goto ERROR;
 		}
 		if (result.type == VAL_STR)
-			ret = write(fd,result.sval,strlen(result.sval));
+		{
+			if (pfp)
+				ret = fwrite(result.sval,strlen(result.sval),1,pfp);
+			else
+				ret = write(fd,result.sval,strlen(result.sval));
+		}
 		else
 		{
 			/* If we have fractional bit print as float else int */
@@ -2159,11 +2205,18 @@ int comPrint(int comnum, st_runline *runline)
 			else
 				ret = asprintf(&numstr,"%ld",(long)result.dval);
 			assert(ret != -1);
-			ret = write(fd,numstr,strlen(numstr));
+			if (pfp)
+				ret = fwrite(numstr,strlen(numstr),1,pfp);
+			else
+				ret = write(fd,numstr,strlen(numstr));
 			free(numstr);
 		}
 		clearValue(&result);
-		if (ret == -1) return ERR_WRITE;
+		if (ret == -1) 
+		{
+			err = ERR_WRITE;
+			goto ERROR;
+		}
 
 		diff = runline->num_tokens - pc;
 		if (diff == 1)
@@ -2171,11 +2224,25 @@ int comPrint(int comnum, st_runline *runline)
 			if (IS_OP_TYPE(&runline->tokens[pc],OP_SEMI_COLON))
 				return OK;
 
-			return ERR_SYNTAX;
+			err = ERR_SYNTAX;
+			goto ERROR;
 		}
-		if (diff > 1 && NOT_COMMA(pc)) return ERR_SYNTAX;
+		if (diff > 1 && NOT_COMMA(pc))
+		{
+			err = ERR_SYNTAX;
+			goto ERROR;
+		}
 	}
-	return (write(fd,"\n",1) == -1) ? ERR_WRITE : OK;
+	if (pfp)
+	{
+		fwrite("\n",1,1,pfp);
+		err = OK;
+	}
+	else err = ((write(fd,"\n",1) == -1) ? ERR_WRITE : OK);
+
+	ERROR:
+	if (pfp) pclose(pfp);
+	return err;
 }
 
 
@@ -2233,15 +2300,19 @@ int comInput(int comnum, st_runline *runline)
 			CHECK_DIR_STREAM(snum);
 			dir_read = TRUE;
 		}
-		else
+		else 
 		{
 			snum = result.dval - 1;
-
-			/* Let #0 = stdin so don't need seperate line to read 
-			   stdin */
-			if (snum == -1) fd = STDIN;
-			else
+			switch(snum)
 			{
+			case STREAM_STDIO:
+				/* #0 = stdin. With PRINT its stdout */
+				fd = STDIN;
+				break;
+			case STREAM_PRINTER:
+				/* Can't read from the printer */
+				return ERR_LP_INPUT;
+			default:
 				CHECK_STREAM(snum);
 				fd = stream[snum];
 			}
@@ -2461,8 +2532,8 @@ int comInput(int comnum, st_runline *runline)
 				break;
 
 			default:
-				if (defmod[(int)c])
-					addDefModStrToKeyLine(&kbline,c,fd == STDIN,insert);
+				if (defmod[(u_char)c])
+					addDefModStrToKeyLine(&kbline,(u_char)c,fd == STDIN,insert);
 				else
 					addCharToKeyLine(&kbline,c,fd == STDIN,insert);
 				/* kbline.str is realloced so reassign */
@@ -2827,19 +2898,19 @@ int comCursor(int comnum, st_runline *runline)
 	LINE x1,y1,x2,y2[,<character>] 
 	RECT x,y,width,height,fill[,<character>]
              where x,y is the top left vertex.
-	CIRCLE x,y,radius,fill[,<character>]
  ***/
-int comLineRectCircle(int comnum, st_runline *runline)
+int comLineRect(int comnum, st_runline *runline)
 {
 	st_value result;
 	int data[5];
-	int pc;
-	int err;
 	int i;
 	int cnt;
-	int slen;
-	char *str;
+	int pc = 1;
+	int err = OK;
+	int slen = 1;
+	char *str = " ";
 
+	err = OK;
 	pc = 1;
 	initValue(&result);
 	cnt = (comnum == COM_RECT ? 5 : 4);
@@ -2851,12 +2922,16 @@ int comLineRectCircle(int comnum, st_runline *runline)
 			runline,
 			&pc,VAL_NUM,i < (cnt-1) ? FALSE : EITHER,&result)) != OK)
 		{
-			return err;
+			goto DONE;
 		}
 		data[i] = result.dval;
 		if (i < cnt-1)
 		{
-			if (NOT_COMMA(pc)) return ERR_SYNTAX;
+			if (NOT_COMMA(pc))
+			{
+				err = ERR_SYNTAX;
+				goto DONE;
+			}
 			++pc;
 		}
 	}
@@ -2864,20 +2939,19 @@ int comLineRectCircle(int comnum, st_runline *runline)
 	/* Get optional character */
 	if (pc < runline->num_tokens)
 	{
-		if (NOT_COMMA(pc)) return ERR_SYNTAX;
+		if (NOT_COMMA(pc)) 
+		{
+			err = ERR_SYNTAX;
+			goto DONE;
+		}
 		++pc;
 		if ((err = getRunLineValue(
 			runline,&pc,VAL_STR,TRUE,&result)) != OK)
 		{
-			return err;
+			goto DONE;
 		}
 		str = result.sval;
 		slen = result.slen;
-	}
-	else
-	{
-		str = " ";
-		slen = 1;
 	}
 
 	switch(comnum)
@@ -2891,17 +2965,120 @@ int comLineRectCircle(int comnum, st_runline *runline)
 		drawRect(data[0],data[1],data[2],data[3],data[4],str,slen);
 		break;
 
-	case COM_CIRCLE:
-		if (data[2] < 0) return ERR_INVALID_ARG;
-		drawCircle(data[0],data[1],data[2],data[3],str,slen);
-		break;
-
 	default:
 		assert(0);
 	}
 
+	DONE:
 	clearValue(&result);
-	return OK;
+	return err;
+}
+
+
+
+
+/*** Formats are:
+	CIRCLE x,y,radius,fill[,<fill character>]
+
+        or optionally from version 1.8.1:
+
+	CIRCLE x,y,x_radius,y_radius,fill[,<fill character>] 
+ ***/
+int comCircle(int comnum, st_runline *runline)
+{
+	st_value result;
+	int data[5];
+	int i;
+	int x;
+	int y;
+	int x_radius;
+	int y_radius;
+	int fill;
+	int pc = 1;
+	int err = OK;
+	int slen = 1;
+	char *str = " ";
+
+	initValue(&result);
+
+	/* Arguments:
+	   0 = x
+	   1 = y
+	   2 = radius/x_radius
+	   3 = y_radius/fill
+	   4 = fill/fill char
+	   5 = fill char
+	*/
+	for(i=0;i < 6;++i,++pc)
+	{
+		if ((err = getRunLineValue(
+			runline,&pc,
+			i < 3 ? VAL_NUM : VAL_UNDEF,EITHER,&result)) != OK)
+		{
+			goto DONE;
+		}
+		if (i < 5)
+			data[i] = (result.type == VAL_NUM ? result.dval : -1);
+
+		if (pc >= runline->num_tokens) break;
+
+		if (NOT_COMMA(pc)) 
+		{
+			err = ERR_SYNTAX;
+			goto DONE;
+		}
+	}
+
+	x = data[0];
+	y = data[1];
+	x_radius = data[2];
+
+	switch(i)
+	{
+	case 3:
+		/* args = x,y,radius,fill */
+		y_radius = data[2];
+		fill = data[3];
+		break;
+	case 4:
+		if (result.type == VAL_STR)
+		{
+			/* args = x,y,radius,fill,fill char */
+			y_radius = data[2];
+			fill = data[3];
+			str = result.str;
+			slen = result.slen;
+		}
+		else
+		{
+			/* args = x,y,x_radius,y_radius,fill */
+			y_radius = data[3];
+			fill = data[4];
+		}
+		break;
+	case 5:
+		/* If its not a string type don't need to clear it */
+		if (result.type != VAL_STR) return ERR_INVALID_ARG;
+
+		/* args = x,y,x_radius,y_radius,fill,fill char */
+		y_radius = data[3];
+		fill = data[4];
+		str = result.str;
+		slen = result.slen;
+		break;
+	default:
+		err = ERR_SYNTAX;
+		goto DONE;
+	}
+
+	if (x_radius < 0 || y_radius < 0 || fill < 0)
+		err = ERR_INVALID_ARG;
+	else
+		drawCircle(x,y,x_radius,y_radius,fill,str,slen);
+
+	DONE:
+	clearValue(&result);
+	return err;
 }
 
 

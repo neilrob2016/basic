@@ -2146,7 +2146,6 @@ int funcGetIPStr(int func, st_var **var, st_value *vallist, st_value *result)
 	int snum;
 
 	snum = vallist[0].dval - 1;
-	if (snum < 0) return ERR_INVALID_ARG;
 	CHECK_STREAM(snum);
 
 	size = sizeof(addr);

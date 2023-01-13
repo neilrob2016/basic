@@ -133,7 +133,7 @@ bool getLine(char **line)
 			case ESC_CON_F4:
 			case ESC_CON_F5:
 				c = 256 + (seq_num - ESC_CON_F1);
-				if (defmod[(int)c])
+				if (defmod[c])
 				{
 					addDefModStrToKeyLine(
 						&keyb_line[input_pos],
@@ -146,7 +146,7 @@ bool getLine(char **line)
 			case ESC_TERM_F4:
 			case ESC_TERM_F5:
 				c = 256 + (seq_num - ESC_TERM_F1);
-				if (defmod[(int)c])
+				if (defmod[c])
 				{
 					addDefModStrToKeyLine(
 						&keyb_line[input_pos],
@@ -200,8 +200,8 @@ bool getLine(char **line)
 			break;
 
 		default:
-			if (defmod[(int)c])
-				addDefModStrToKeyLine(&keyb_line[input_pos],c,TRUE,insert);
+			if (defmod[(u_char)c])
+				addDefModStrToKeyLine(&keyb_line[input_pos],(u_char)c,TRUE,insert);
 			else
 				addCharToKeyLine(&keyb_line[input_pos],c,TRUE,insert);
 		}
@@ -234,6 +234,8 @@ void addDefModStrToKeyLine(
 	st_keybline *line, int index, bool write_stdout, bool insert)
 {
 	char *ptr;
+
+	assert(index >= 0);
 
 	/* Loop as its easier than writing an entire new word add function to 
 	   account for cursor control */

@@ -8,7 +8,7 @@
    70 WHILE 1
    80     CLS 
    90     PRINT "X = ",bx,", y = ",by
-  100     CIRCLE bx,by,radius,1,"X"
+  100     CIRCLE bx,by,radius,radius * 0.6,1,"X"
   110     bx = bx + xadd
   120     by = by + yadd
   130     IF bx <= radius OR bx >= $term_cols - radius THEN 

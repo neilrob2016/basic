@@ -705,8 +705,23 @@ This inputs an entire line from stdin or a stream - \n is the terminator. eg:
    30 INPUT name
    40 PRINT "Your name is ",name
 
-This resets the $interrupted system variable to 0 before it starts but see
-programs/input3.bas to see how to work around this.
+or stream input:
+
+   10 fd = open("/etc/passwd","r")
+   20 WHILE NOT $eof
+   30     INPUT #fd,info
+   40     PRINT info
+   50 WEND 
+   60 CLOSE fd
+
+If the #0 special stream is given then it will read from stdin. eg:
+
+   INPUT #0,data
+
+Note that this command cannot read from the printer (stream -1) and it is not
+designed to read binary files (though it can). It also resets the $interrupted 
+system variable to 0 before it starts. See programs/input3.bas to see how to 
+work around interruptions.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 PDIR  [<directory path>]
@@ -724,9 +739,27 @@ string or a complex expression or the result of a function. By default a
 newline is added on the end but this can be suppressed by the use of a semi
 colon. A question mark can be used as a shortcut. eg:
 
-  PRINT "Hello ";: print "world " * 3
+  print "Hello ";: print "world " * 3
   ? "hello":? "world"
 
+PRINT can also write to streams eg:
+
+fp = open("hello","w")
+print #fp,"hello world"
+
+There are currently 2 special streams, 0 = stdout, -1 = printer. These exist to
+allow generic print subroutines which will print to whatever stream they are
+set to. eg:
+
+print #0,"This will print to stdout"
+print #-1,"This will print to the printer"
+lp = -1
+print #lp,"So will this"
+
+Note however that writing more than 1 line to the printer this way is VERY 
+inefficient as it creates a new print job for every print statement. To do it 
+more efficiently use popen() to create a stream first. See programs/printer.bas
+for how to do this.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 RM <file>[,<file> * N]
@@ -759,17 +792,29 @@ the terminal.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CIRCLE <centre x>,<centre y>,<radius>,<fill 0/1>[,<draw string>]
 
+Alternative from version 1.8.1:
+
+CIRCLE <centre x>,<centre y>,<x radius>,<y radius>,<fill 0/1>[,<draw string>]
+
 This draws a circle in the terminal window using spaces in the PAPER colour
 or the draw string if given. If fill is 0 then only an outline is drawn else 
-the circle is filled. Note that drawing a circle using terminal characters is
-not an exact science so the actual radius of the circle may vary slightly
-from the requested amount.
+the circle is filled.
 
 eg:
 
 CLS
 PAPER 4
 CIRCLE 20,20,10,1,"Hello"
+
+Note that drawing a circle using terminal characters is not an exact science so
+the actual radius of the circle may vary slightly from the requested amount 
+(and if the circle is small it will look rather square) so to this end from 
+BASIC 1.8.1 onwards you can also specify seperate x and y radii in order to 
+adjust for this and also to draw ovals. eg:
+
+CIRCLE 20,20,10,5,1,"X"
+
+This gives an x radius of 10 characters and a y radius of 5.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CLS
@@ -1009,12 +1054,12 @@ To reset to default behaviour enter "ON TERMSIZE CONT".
 See: programs/termsize.bas
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-DUMP/DUMPC  [<var/exp pattern>[,<var/exp pattern> * N]]
+DUMP/LDUMP [FULL] [<var/exp pattern>[,<var/exp pattern> * N]]
 
 If used on its own these commands dumps the names and values of all variables
 and defined expressions (DEFEXP) the interpreter currently holds. If specific
 names or patterns are given then it dumps the given variables or expressions
-that match. If DUMPC is used then array and map contents of variables are 
+that match. If FULL is used then array and map contents of variables are 
 dumped too. To dump a DEFEXP you must prepend the name with '!' unless you
 use a wildcard pattern. Note that wildcard patterns must be enclosed in
 quotes.
@@ -1022,11 +1067,12 @@ quotes.
   DUMP $version,$build_date
   DUMP "$*"
   DUMP "$t*","*a*"
-  DUMPC $env
   DEFEXP abc = x*2
   DUMP !abc
   DUMP "!*"
-  DUMP "*a*"
+  DUMP FULL "*a*","*e*"
+
+LDUMP works identically but it dumps to the printer.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 HELP [<wildcard match>]

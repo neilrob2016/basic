@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
-#define VERSION     "1.8.0"
+#define VERSION     "1.8.1"
 
 #define STDIN  0
 #define STDOUT 1
@@ -69,6 +69,7 @@
 #define IS_OP(TOK)     ((TOK)->type == TOK_OP)
 #define IS_COM(TOK)    ((TOK)->type == TOK_COM)
 #define IS_NUM(TOK)    ((TOK)->type == TOK_NUM)
+#define IS_STR(TOK)    ((TOK)->type == TOK_STR)
 #define IS_VAR(TOK)    ((TOK)->type == TOK_VAR)
 #define IS_DEFEXP(TOK) ((TOK)->type == TOK_DEFEXP)
 
@@ -416,6 +417,8 @@ enum
 	/* 90 */
 	ERR_INVALID_PATH,
 	ERR_INVALID_FILE_PERMS,
+	ERR_LP,
+	ERR_LP_INPUT,
 
 	NUM_ERRORS
 };
@@ -552,7 +555,9 @@ char *error_str[NUM_ERRORS] =
 
 	/* 90 */
 	"Invalid path or path not found",
-	"Invalid file/directory permissions"
+	"Invalid file/directory permissions",
+	"Cannot connect to the printer",
+	"Cannot input from the printer"
 };
 #else
 extern char *error_str[NUM_ERRORS];
@@ -678,35 +683,38 @@ enum
 	COM_DEFEXP,
 	COM_DEFMOD,
 	COM_DUMP,
-	COM_DUMPC,
-	COM_HISTORY,
+	COM_LDUMP,
+	COM_FULL,
 
 	/* 85 */
+	COM_HISTORY,
 	COM_HELP,
 	COM_EDIT,
 	COM_EVAL,
 	COM_CHOOSE,
-	COM_CASE,
 
 	/* 90 */
+	COM_CASE,
 	COM_DEFAULT,
 	COM_CHOSEN,
 	COM_WATCH,
 	COM_UNWATCH,
-	COM_DEG,
 
 	/* 95 */
+	COM_DEG,
 	COM_RAD,
 	COM_KILLALL,
 	COM_END,
 	COM_FROM,
-	COM_MOVE,
 
 	/* 100 */
+	COM_MOVE,
 	COM_CONTLOOP,
 	COM_STON,
 	COM_STOFF,
 	COM_RENAME,
+
+	/* 105 */
 	COM_TERMSIZE,
 
 	NUM_COMMANDS
@@ -766,8 +774,7 @@ DECL_COM(Colour)
 DECL_COM(Attr)
 DECL_COM(Scroll)
 DECL_COM(Cursor)
-DECL_COM(LineRectCircle)
-DECL_COM(Rect)
+DECL_COM(LineRect)
 DECL_COM(Circle)
 DECL_COM(Sleep)
 DECL_COM(Trace)
@@ -888,11 +895,11 @@ st_com command[NUM_COMMANDS] =
 	{ "SCROLL",     comScroll },
 	{ "CURSOR",     comCursor },
 	{ "PLOT",       comLocatePlot },
-	{ "LINE",       comLineRectCircle },
+	{ "LINE",       comLineRect },
 
 	/* 70 */
-	{ "RECT",       comLineRectCircle },
-	{ "CIRCLE",     comLineRectCircle },
+	{ "RECT",       comLineRect },
+	{ "CIRCLE",     comCircle },
 	{ "SLEEP",      comSleep },
 	{ "TRON",       comTrace },
 	{ "TRONS",      comTrace },
@@ -908,35 +915,38 @@ st_com command[NUM_COMMANDS] =
 	{ "DEFEXP",     comDefExp },
 	{ "DEFMOD",     comDefMod },
 	{ "DUMP",       comDump },
-	{ "DUMPC",      comDump },
-	{ "HISTORY",    comListHistory },
+	{ "LDUMP",      comDump },
+	{ "FULL",       comUnexpected },
 
 	/* 85 */
+	{ "HISTORY",    comListHistory },
 	{ "HELP",       comHelp },
 	{ "EDIT",       comEdit },
 	{ "EVAL",       comEval },
 	{ "CHOOSE",     comChoose },
-	{ "CASE",       comDoNothing },
 
 	/* 90 */
+	{ "CASE",       comDoNothing },
 	{ "DEFAULT",    comDoNothing },
 	{ "CHOSEN",     comChosen },
 	{ "WATCH",      comWatch },
 	{ "UNWATCH",    comUnwatch },
-	{ "DEG",        comAngleType },
 
 	/* 95 */
+	{ "DEG",        comAngleType },
 	{ "RAD",        comAngleType },
 	{ "KILLALL",    comKillAll },
 	{ "END",        comUnexpected },
 	{ "FROM",       comUnexpected },
-	{ "MOVE",       comDeleteMove },
 
 	/* 100 */
+	{ "MOVE",       comDeleteMove },
 	{ "CONTLOOP",   comContLoop },
 	{ "STON",       comStrict },
 	{ "STOFF",      comStrict },
 	{ "RENAME",     comRename },
+
+	/* 105 */
 	{ "TERMSIZE",   comUnexpected }
 };
 #else
@@ -1706,8 +1716,8 @@ int  validVariableName(char *name);
 void deleteVariable(st_var *var, st_runline *runline);
 void deleteVariables();
 void renameVariable(st_var *var, char *new_name);
-void dumpVariables(char *pat, bool dump_contents);
-void dumpVariable(st_var *var, bool dump_contents);
+void dumpVariables(FILE *fp, char *pat, bool dump_contents);
+void dumpVariable(FILE *fp, st_var *var, bool dump_contents);
 
 /* expressions.c */
 int evalExpression(st_runline *runline, int *pc, st_value *result);
@@ -1736,8 +1746,8 @@ st_defexp *getDefExp(char *name);
 void renameDefExp(st_defexp *exp, char *new_name);
 void deleteDefExp(st_runline *runline, bool force);
 void deleteDefExps();
-void dumpDefExps(char *pat);
-void dumpDefExp(st_defexp *exp);
+void dumpDefExps(FILE *fp, char *pat);
+void dumpDefExp(FILE *fp, st_defexp *exp);
 
 /* defkeys.c */
 void initDefMods();
@@ -1766,7 +1776,9 @@ void locate(int x, int y);
 void drawString(int x, int y, char *str, int slen);
 void drawLine(int x1, int y1, int x2, int y2, char *str, int slen);
 void drawRect(int x, int y, int width, int height, int fill, char *str, int slen);
-void drawCircle(int x, int y, int radius, int fill, char *str, int slen);
+void drawCircle(
+	int x, int y,
+	int x_radius, int y_radius, int fill, char *str, int slen);
 
 /* argv.c */
 int  splitStringIntoArgv(char *str, char ***b_argv);

@@ -263,3 +263,13 @@ January 2023
 - Misc internal code updates
 - Renamed timer.bas to speed.bas
 - Removed unnecessary code from input3.bas
+
+1.8.1
+- Added LDUMP command and changed DUMPC to "DUMP FULL". These are changes to 
+  to rarely used functionality so not worth upping version to 1.9.0
+- Added alternative parameters to CIRCLE command to allow seperate X and Y
+  radii in order to draw ovals and compensate for terminal character differences
+  in width and height.
+- Fixed Basic crashing when reading a binary file with INPUT bug.
+- Added PRINT #-1,<data> special stream functionality to print direct to the 
+  printer without invoking popen() first.

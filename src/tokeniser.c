@@ -252,7 +252,9 @@ st_runline *checkSOLCommand(
 	if (!IS_COM(token) || 
 	    runline->num_tokens < 2 ||
 	    (IS_NUM_TYPE(&runline->tokens[0],NUM_INT) && runline->num_tokens < 3))
+	{
 		return runline;
+	}
 
 	switch(token->subtype)
 	{
@@ -265,7 +267,8 @@ st_runline *checkSOLCommand(
 	case COM_END:
 	case COM_FROM:
 	case COM_TERMSIZE:
-		/* Ignore these */
+	case COM_FULL:
+		/* Subcommands - ignore */
 		return runline;
 
 	case COM_GOTO:

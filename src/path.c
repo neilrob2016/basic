@@ -115,7 +115,7 @@ int matchPath(int type, char *pat, char *matchpath, bool toplevel)
 
 		/* At end of pattern. Check final file for type. Treat links
 		   as files. */
-		if (type == S_ANY || stat_type == type || 
+		if (type == S_IFANY || stat_type == type || 
 		    (type == S_IFREG && stat_type == S_IFLNK))
 		{
 			if (!copyStr(matchpath,path,PATH_MAX))

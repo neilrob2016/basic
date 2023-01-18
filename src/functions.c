@@ -1489,7 +1489,7 @@ int funcChMod(int func, st_var **var, st_value *vallist, st_value *result)
 	if (perms < 0 || perms > MAX_PERMS) return ERR_INVALID_FILE_PERMS;
 
 	/* Expand wildcards */
-	if (matchPath(S_ANY,vallist[0].sval,filename,TRUE) != OK)
+	if (matchPath(S_IFANY,vallist[0].sval,filename,TRUE) != OK)
 		copyStr(filename,vallist[0].sval,PATH_MAX);
 
 	setValue(result,VAL_NUM,"",chmod(filename,perms) == -1 ? 0 : 1);
@@ -1525,7 +1525,7 @@ int funcStatStr(int func, st_var **var, st_value *vallist, st_value *result)
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
 
 	/* Expand wildcards */
-	if (matchPath(S_ANY,vallist[0].sval,filename,TRUE) != OK)
+	if (matchPath(S_IFANY,vallist[0].sval,filename,TRUE) != OK)
 		copyStr(filename,vallist[0].sval,PATH_MAX);
 
 	if (func == FUNC_STAT)
@@ -1720,7 +1720,7 @@ int funcPathStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
 	char matchpath[PATH_MAX+1];
 
-	if (matchPath(S_ANY,vallist[0].sval,matchpath,TRUE) == OK)
+	if (matchPath(S_IFANY,vallist[0].sval,matchpath,TRUE) == OK)
 		setValue(result,VAL_STR,matchpath,0);
 	else
 		setValue(result,VAL_STR,NULL,0);

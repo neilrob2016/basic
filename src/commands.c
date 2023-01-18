@@ -13,6 +13,7 @@ static int  doComRun(int comnum, st_runline *runline, int pc);
 static bool setBlockEnd(st_runline *runline, int start_com, int end_com);
 static int  getRunLineValue(
 	st_runline *runline, int *pc, int type, int eol, st_value *result);
+static bool hasWildcards(char *str);
 
 
 /****************************** DEFAULT FUNCS ********************************/
@@ -1848,8 +1849,8 @@ int comSave(int comnum, st_runline *runline)
 	char path[PATH_MAX+1];
 	char *fullpath;
 	char *filename;
-	char *tmp;
 	char *ptr;
+	char *tmp = NULL;
 	int err;
 	int pc = 1;
 
@@ -1874,6 +1875,23 @@ int comSave(int comnum, st_runline *runline)
 		assert(asprintf(&fullpath,"%s%s",path,ptr) != -1);
 	}
 	else fullpath = result.sval;
+
+	/* Now match any wildcards in the filename */
+	if (hasWildcards(fullpath))
+	{
+		if ((err = matchPath(S_IFREG,fullpath,path,TRUE)) == OK)
+		{
+			if (fullpath != result.sval) free(fullpath);
+			assert((fullpath = strdup(path)));
+		}
+
+		/* Make sure non left */
+		if (hasWildcards(fullpath))
+		{
+			err = ERR_INVALID_PATH;
+			goto ERROR;
+		}
+	}
 		
 	if ((tmp = addFileExtension(fullpath))) 
 		filename = tmp;
@@ -3729,4 +3747,14 @@ bool setBlockEnd(st_runline *runline, int start_com, int end_com)
 		}
 	}
 	return TRUE;
+}
+
+
+
+
+bool hasWildcards(char *str)
+{
+	char *s;
+	for(s=str;*s && *s != '*' && *s != '?';++s);
+	return (*s ? TRUE : FALSE);
 }

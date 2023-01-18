@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
-#define VERSION     "1.8.1"
+#define VERSION     "1.8.2"
 
 #define STDIN  0
 #define STDOUT 1
@@ -120,7 +120,7 @@
 
 #define DEGS_PER_RADIAN 57.2957795
 
-#define S_ANY 0
+#define S_IFANY 0
 
 /********************************* STRUCTURES ********************************/
 
@@ -554,7 +554,7 @@ char *error_str[NUM_ERRORS] =
 	"RENAME can only rename variables and DEFEXPs",
 
 	/* 90 */
-	"Invalid path or path not found",
+	"Invalid path/filename or path not found",
 	"Invalid file/directory permissions",
 	"Cannot connect to the printer",
 	"Cannot input from the printer"

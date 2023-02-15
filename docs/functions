@@ -601,17 +601,18 @@ DIR 1777 0 root 0 wheel 192 1672826748 1672824467 1672824467 6 /tmp
 ]
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-CHMOD(<path>,<permissions>)
+CHMOD$(<path>,<permissions>)
 
 Change the permissions of a file system object. Special bits can be included.
-Wilcards and tilda are supported.
+Wilcards and tilda are supported. If the function succeeds it returns the 
+expanded path, else it returns "" and sets $syserror.
 
 Eg:
 
-] print chmod(".",07777)
-1
-] print stat$(".")
-DIR 7777 501 neil 20 staff 1504 1673004435 1673004252 1673004470 47 ./.
+] print chmod$("te*dir",0777)
+./testdir
+] print stat$("testdir")
+DIR 0777 501 neil 20 staff 64 1676129066 1676129066 1676129085 2 testdir
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 UMASK(<permissions>)
@@ -627,7 +628,7 @@ Eg:
 4022
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-MKDIR(<directory path>[,<directory permissions>])
+MKDIR$(<directory path>[,<directory permissions>])
 
 This creates a new directory with the given path name. Wildcards and tilda are
 NOT currently supported. The directory permissions are an octal value from 0000
@@ -636,9 +637,9 @@ The users umask is subtracted from it to give the actual permissions. The
 permissions can include the special bits but these have no effect. Use CHMOD() 
 to change those.
 
-On success 1 is returned else 0 with $syserror set. eg:
+On success the expanded path is returned else "" with $syserror set. eg:
 
-   IF NOT mkdir("/bl*",0500) THEN PRINT syserror$($syserror) FI
+   IF mkdir("/bl*",0500) = "" THEN PRINT syserror$($syserror) FI
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 OPEN(<filename>,<operation>[,<permissions>])
@@ -659,12 +660,15 @@ reading. They can include the special bits but these have no effect. Use
 CHMOD() to change those.
 
 eg:
-   DIM fd = open("wibble","w",0444)
-   PRINT #1,"hello world"
+   fd = open("wibble","w",0444)
+   print #fd,"hello world"
 
-Wildcards and tilda (~) are supported for read only mode. Eg:
+NOTE: Wildcards and tilda (~) are only supported with read only mode. Eg:
 
-   DIM fd = open("?ibb*","r")
+   fd = open("~/?ibb*","r")
+
+If you need wildcards when creating or appending a file then use the path$() 
+function to expand the directory portion first.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 OPENDIR(<directory name>)
@@ -675,16 +679,17 @@ supported.
 
 eg:
 
-   DIM fd = opendir("/tm*")
+   fd = opendir("/tm*")
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RMFILE$(<file or link name>)
 RMDIR$(<directory name>)
-RMFILE$(<file name>)
+RMFSO$(<filesystem object name>)
 
-These functions remove a directory and file respectively and can take wildcard
-names (though they will only remove ONE file/dir). If the function succeeds it 
-returns the name of the file/dir it deleted, else it returns an empty string 
-and sets $syserror. eg:
+These functions delete a file/link, directory and anything respectively and 
+can take wildcard names (though they will only remove ONE file/dir). If the 
+function succeeds it returns the name of the file/dir it deleted, else it 
+returns an empty string and sets $syserror. eg:
 
    10 DIM file = rmfile$("/etc/pas*")
    20 IF file = "" THEN 
@@ -696,6 +701,9 @@ and sets $syserror. eg:
    80 ELSE 
    90     PRINT "Removed: ",file
   100 FI 
+
+The only time the function will error with a BASIC error is if the path is too 
+long.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 SEEK(<stream>,<distance in bytes>)

@@ -61,13 +61,13 @@ int numType(char *str)
 
 
 /*** Alternative to standard strncpy() ***/
-bool copyStr(char *to, char *from, int len)
+bool copyStr(char *to, char *from, int max_len)
 {
 	int i;
-	for(i=0;i <= len && *from;++i,++to,++from) *to = *from;
-	if (*from) return FALSE;
+	for(i=0;i <= max_len && *from;++i,++to,++from) *to = *from;
 	*to = 0;
-	return TRUE;
+	/* Did we copy all of from string? */
+	return (*from ? FALSE : TRUE);
 }
 
 

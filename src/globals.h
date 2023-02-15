@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
-#define VERSION     "1.8.2"
+#define VERSION     "1.9.0"
 
 #define STDIN  0
 #define STDOUT 1
@@ -362,7 +362,7 @@ enum
 	ERR_CANT_DEL_FILE,
 	ERR_NOTHING_TO_SAVE,
 	ERR_NO_SUCH_FILE,
-	ERR_FILENAME_TOO_LONG,
+	ERR_PATH_TOO_LONG,
 	ERR_MAX_STREAMS,
 
 	/* 55 */
@@ -501,7 +501,7 @@ char *error_str[NUM_ERRORS] =
 	"Cannot delete file",
 	"No program to save",
 	"No such path or file",
-	"File/directory name too long",
+	"Path too long",
 	"Maximum open streams",
 
 	/* 55 */
@@ -554,7 +554,7 @@ char *error_str[NUM_ERRORS] =
 	"RENAME can only rename variables and DEFEXPs",
 
 	/* 90 */
-	"Invalid path/filename or path not found",
+	"Invalid path or path not found",
 	"Invalid file/directory permissions",
 	"Cannot connect to the printer",
 	"Cannot input from the printer"
@@ -1055,65 +1055,66 @@ enum
 	FUNC_SEEK,
 	FUNC_RMFILE,
 	FUNC_RMDIR,
-	FUNC_STAT,
+	FUNC_RMFSO,
 
 	/* 65 */
+	FUNC_STAT,
 	FUNC_LSTAT,
 	FUNC_CHMOD,
 	FUNC_UMASK,
 	FUNC_CANREAD,
-	FUNC_CANWRITE,
 
 	/* 70 */
+	FUNC_CANWRITE,
 	FUNC_SELECT,
 	FUNC_RAND,
 	FUNC_RANDOM,
 	FUNC_TIME,
-	FUNC_DATE,
 
 	/* 75 */
+	FUNC_DATE,
 	FUNC_DATETOSECS,
 	FUNC_POPEN,
 	FUNC_FORK,
 	FUNC_EXEC,
-	FUNC_WAITPID,
 
 	/* 80 */
+	FUNC_WAITPID,
 	FUNC_CHECKPID,
 	FUNC_KILL,
 	FUNC_PIPE,
 	FUNC_CONNECT,
-	FUNC_LISTEN,
 
 	/* 85 */
+	FUNC_LISTEN,
 	FUNC_ACCEPT,
 	FUNC_GETIP,
 	FUNC_IP2HOST,
 	FUNC_HOST2IP,
-	FUNC_GETUSERBYID,
 
 	/* 90 */
+	FUNC_GETUSERBYID,
 	FUNC_GETGROUPBYID,
 	FUNC_GETUSERBYNAME,
 	FUNC_GETGROUPBYNAME,
 	FUNC_GETENV,
-	FUNC_SETENV,
 
 	/* 95 */
+	FUNC_SETENV,
 	FUNC_SYSTEM,
 	FUNC_SYSINFO,
 	FUNC_CRYPT,
 	FUNC_LPAD,
-	FUNC_RPAD,
 
 	/* 100 */
+	FUNC_RPAD,
 	FUNC_NUMSTRBASE,
 	FUNC_PATH,
 	FUNC_HAVEDATA,
 	FUNC_REGMATCH,
-	FUNC_EXP,
 
 	/* 105 */
+	FUNC_EXP,
 	FUNC_EXP2,
 	FUNC_EXP10,
 
@@ -1175,11 +1176,11 @@ DECL_FUNC(Open)
 DECL_FUNC(OpenDir)
 DECL_FUNC(GetDirStr)
 DECL_FUNC(ChDirStr)
-DECL_FUNC(MkDir)
+DECL_FUNC(MkDirStr)
 DECL_FUNC(Seek)
-DECL_FUNC(RmFileOrDirStr)
+DECL_FUNC(RmFSOStr)
 DECL_FUNC(StatStr)
-DECL_FUNC(ChMod)
+DECL_FUNC(ChModStr)
 DECL_FUNC(Umask)
 DECL_FUNC(CanRW)
 DECL_FUNC(Select)
@@ -1301,69 +1302,70 @@ st_func function[NUM_FUNCTIONS] =
 	{ "CHDIR$",         1, { VAL_STR }, funcChDirStr },
 
 	/* 60 */
-	{ "MKDIR",         -1, { VAL_STR }, funcMkDir },
+	{ "MKDIR$",        -1, { VAL_STR }, funcMkDirStr },
 	{ "SEEK",           2, { VAL_NUM, VAL_NUM }, funcSeek },
-	{ "RMFILE$",        1, { VAL_STR }, funcRmFileOrDirStr },
-	{ "RMDIR$",         1, { VAL_STR }, funcRmFileOrDirStr },
-	{ "STAT$",          1, { VAL_STR }, funcStatStr },
+	{ "RMFILE$",        1, { VAL_STR }, funcRmFSOStr },
+	{ "RMDIR$",         1, { VAL_STR }, funcRmFSOStr },
+	{ "RMFSO$",         1, { VAL_STR }, funcRmFSOStr },
 
 	/* 65 */
+	{ "STAT$",          1, { VAL_STR }, funcStatStr },
 	{ "LSTAT$",         1, { VAL_STR }, funcStatStr },
-	{ "CHMOD",          2, { VAL_STR, VAL_NUM }, funcChMod },
+	{ "CHMOD$",         2, { VAL_STR, VAL_NUM }, funcChModStr },
 	{ "UMASK",          1, { VAL_NUM }, funcUmask },
 	{ "CANREAD",        1, { VAL_NUM }, funcCanRW },
-	{ "CANWRITE",       1, { VAL_NUM }, funcCanRW },
 
 	/* 70 */
+	{ "CANWRITE",       1, { VAL_NUM }, funcCanRW },
 	{ "SELECT",         3, { VAL_UNDEF, VAL_UNDEF, VAL_NUM }, funcSelect },
 	{ "RAND",           0, { VAL_UNDEF }, funcRand },
 	{ "RANDOM",         1, { VAL_NUM }, funcRandom },
 	{ "TIME",           0, { VAL_UNDEF }, funcTime },
-	{ "DATE$",          2, { VAL_NUM, VAL_STR }, funcDateStr },
 
 	/* 75 */
+	{ "DATE$",          2, { VAL_NUM, VAL_STR }, funcDateStr },
 	{ "DATETOSECS",     2, { VAL_STR, VAL_STR }, funcDateToSecs },
 	{ "POPEN",          2, { VAL_STR, VAL_STR }, funcPopen },
 	{ "FORK",           0, { VAL_UNDEF }, funcFork },
 	{ "EXEC",           2, { VAL_STR, VAL_UNDEF }, funcExec },
-	{ "WAITPID$",       1, { VAL_NUM }, funcWaitCheckStr },
 
 	/* 80 */
+	{ "WAITPID$",       1, { VAL_NUM }, funcWaitCheckStr },
 	{ "CHECKPID$",      1, { VAL_NUM }, funcWaitCheckStr },
 	{ "KILL",           2, { VAL_NUM, VAL_NUM }, funcKill },
 	{ "PIPE",           1, { VAL_UNDEF }, funcPipe },
 	{ "CONNECT",        1, { VAL_STR }, funcConnect },
-	{ "LISTEN",         2, { VAL_NUM, VAL_NUM }, funcListen },
 
 	/* 85 */
+	{ "LISTEN",         2, { VAL_NUM, VAL_NUM }, funcListen },
 	{ "ACCEPT",         1, { VAL_NUM }, funcAccept },
 	{ "GETIP$",         1, { VAL_NUM }, funcGetIPStr },
 	{ "IP2HOST$",       1, { VAL_STR }, funcIP2HostStr },
 	{ "HOST2IP$",       1, { VAL_STR }, funcHost2IPStr },
-	{ "GETUSERBYID$",   1, { VAL_NUM }, funcGetUserStr },
 
 	/* 90 */
+	{ "GETUSERBYID$",   1, { VAL_NUM }, funcGetUserStr },
 	{ "GETGROUPBYID$",  1, { VAL_NUM }, funcGetGroupStr },
 	{ "GETUSERBYNAME$", 1, { VAL_STR }, funcGetUserStr }, 
 	{ "GETGROUPBYNAME$",1, { VAL_STR }, funcGetGroupStr },
 	{ "GETENV$",        1, { VAL_STR }, funcGetEnvStr },
-	{ "SETENV",         2, { VAL_STR, VAL_STR }, funcSetEnv },
 
 	/* 95 */
+	{ "SETENV",         2, { VAL_STR, VAL_STR }, funcSetEnv },
 	{ "SYSTEM",         1, { VAL_STR }, funcSystem },
 	{ "SYSINFO$",       1, { VAL_STR }, funcSysInfoStr },
 	{ "CRYPT$",         3, { VAL_STR, VAL_STR, VAL_STR }, funcCryptStr },
 	{ "LPAD$",          3, { VAL_STR, VAL_STR, VAL_NUM }, funcPadStr },
-	{ "RPAD$",          3, { VAL_STR, VAL_STR, VAL_NUM }, funcPadStr },
 
 	/* 100 */
+	{ "RPAD$",          3, { VAL_STR, VAL_STR, VAL_NUM }, funcPadStr },
 	{ "NUMSTRBASE",     1, { VAL_STR }, funcNumStrBase },
 	{ "PATH$",          1, { VAL_STR }, funcPathStr },
 	{ "HAVEDATA",       0, { VAL_UNDEF }, funcHaveData },
 	{ "REGMATCH",       2, { VAL_STR,VAL_STR }, funcRegMatch },
-	{ "EXP",            1, { VAL_NUM }, funcExp },
 
 	/* 105 */
+	{ "EXP",            1, { VAL_NUM }, funcExp },
 	{ "EXP2",           1, { VAL_NUM }, funcExp },
 	{ "EXP10",          1, { VAL_NUM }, funcExp }
 };
@@ -1716,7 +1718,7 @@ int  validVariableName(char *name);
 void deleteVariable(st_var *var, st_runline *runline);
 void deleteVariables();
 void renameVariable(st_var *var, char *new_name);
-void dumpVariables(FILE *fp, char *pat, bool dump_contents);
+int  dumpVariables(FILE *fp, char *pat, bool dump_contents);
 void dumpVariable(FILE *fp, st_var *var, bool dump_contents);
 
 /* expressions.c */
@@ -1737,8 +1739,10 @@ bool trueValue(st_value *val);
 /* functions.c */
 int callFunction(st_runline *runline, int *pc, st_value *result);
 
-/* disk.c */
-int matchPath(int type, char *pat, char *matchpath, bool toplevel);
+/* path.c */
+int  matchPath(int type, char *pat, char *matchpath, bool toplevel);
+bool hasWildCards(char *path);
+int  appendPath(char *to, char *add);
 
 /* defexp.c */
 int createDefExp(st_runline *runline);
@@ -1746,7 +1750,7 @@ st_defexp *getDefExp(char *name);
 void renameDefExp(st_defexp *exp, char *new_name);
 void deleteDefExp(st_runline *runline, bool force);
 void deleteDefExps();
-void dumpDefExps(FILE *fp, char *pat);
+int  dumpDefExps(FILE *fp, char *pat);
 void dumpDefExp(FILE *fp, st_defexp *exp);
 
 /* defkeys.c */
@@ -1785,12 +1789,12 @@ int  splitStringIntoArgv(char *str, char ***b_argv);
 void freeArgv(int b_argc, char **b_argv);
 
 /* strings.c */
-int    numType(char *str);
-bool   copyStr(char *to, char *from, int len);
-void   toUpperStr(char *str);
-void   toLowerStr(char *str);
-bool   wildMatch(char *str, char *pat, bool case_sensitive);
-char  *addFileExtension(char *filename);
+int   numType(char *str);
+bool  copyStr(char *to, char *from, int max_len);
+void  toUpperStr(char *str);
+void  toLowerStr(char *str);
+bool  wildMatch(char *str, char *pat, bool case_sensitive);
+char *addFileExtension(char *filename);
 
 /* misc.c */
 void   doError(int err, st_progline *progline);

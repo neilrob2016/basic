@@ -784,9 +784,10 @@ void renameVariable(st_var *var, char *new_name)
 
 
 /*** Dump all variables to the console ***/
-void dumpVariables(FILE *fp, char *pat, bool dump_contents)
+int dumpVariables(FILE *fp, char *pat, bool dump_contents)
 {
 	st_var *var;
+	int cnt = 0;
 	int c;
 
 	for(c=0;c <= MAX_UCHAR;++c)
@@ -794,9 +795,13 @@ void dumpVariables(FILE *fp, char *pat, bool dump_contents)
 		for(var=first_var[c];var;var=var->next)
 		{
 			if (!pat || wildMatch(var->name,pat,TRUE))
+			{
 				dumpVariable(fp,var,dump_contents);
+				++cnt;
+			}
 		}
 	}
+	return cnt;
 }
 
 
@@ -812,7 +817,7 @@ void dumpVariable(FILE *fp, st_var *var, bool dump_contents)
 	int i;
 	int c;
 
-	fprintf(fp,"%-15s",var->name);
+	fprintf(fp,"%-15s ",var->name);
 
 	switch(var->type)
 	{

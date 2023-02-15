@@ -278,3 +278,13 @@ January 2023
 - Fixed bug in SAVE command whereby a path with wildcards wasn't always
   expanded correctly or at all.
 - Renamed a C macro.
+
+
+February 2023
+=============
+1.9.0
+- Added rmfso$()
+- Renamed chmod() to chmod$()
+- Renamed mkdir() to mkdir$()
+- Wildcards are now supported in mkdir$()
+- DUMP command now notes when there's no match for a name or pattern.

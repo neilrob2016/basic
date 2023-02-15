@@ -2,9 +2,18 @@
 
 #define MAX_PERMS 07777
 
+
 #define FIND_FREE_STREAM(S) \
 	for(S=0;S < MAX_STREAMS && stream[S];++S); \
 	if (S == MAX_STREAMS) return ERR_MAX_STREAMS;
+
+
+#define MATCHPATH(T) \
+	path = vallist[0].sval; \
+	ret = ERR_INVALID_PATH; \
+	if (hasWildCards(path)) ret = matchPath(T,path,matchpath,TRUE); \
+	if (ret != OK && !copyStr(matchpath,path,PATH_MAX)) \
+		return ERR_PATH_TOO_LONG;
 
 
 int callFunction(st_runline *runline, int *pc, st_value *result)
@@ -1252,10 +1261,12 @@ int funcPadStr(int func, st_var **var, st_value *vallist, st_value *result)
 /*** Open a file and return the BASIC stream number ***/
 int funcOpen(int func, st_var **var, st_value *vallist, st_value *result)
 {
-	char filename[PATH_MAX+1];
+	char matchpath[PATH_MAX+1];
+	char *path;
 	char *flagstr;
-	bool match = FALSE;
 	mode_t perms = 0666;
+	bool match = FALSE;
+	int ret;
 	int oflags;
 	int fd;
 	int snum;
@@ -1287,17 +1298,21 @@ int funcOpen(int func, st_var **var, st_value *vallist, st_value *result)
 	FIND_FREE_STREAM(snum);
 
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
+	setValue(result,VAL_NUM,NULL,0);
 
-	/* Wildcards allowed for read. If no match just pass through to
-	   open() and let it error */
-	if (!match || matchPath(S_IFREG,vallist[0].sval,filename,TRUE) != OK)
-		copyStr(filename,vallist[0].sval,PATH_MAX);
+	/* Only allow wildcard matching for read otherwise things get too
+	   complicated. Eg: File might or might not already exist for append */
+	path = vallist[0].sval;
+	ret = ERR_INVALID_PATH;
+	if (match && hasWildCards(path))
+		ret = matchPath(S_IFREG,path,matchpath,TRUE);
+	if (ret != OK && !copyStr(matchpath,path,PATH_MAX))
+		return ERR_PATH_TOO_LONG;
 
 	/* Don't throw an error if can't open file - just set syserror */
-	if ((fd = open(filename,oflags,perms)) == -1)
+	if ((fd = open(matchpath,oflags,perms)) == -1)
 	{
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
-		setValue(result,VAL_NUM,NULL,0);
 		return OK;
 	}
 	stream[snum] = fd;
@@ -1315,21 +1330,21 @@ int funcOpen(int func, st_var **var, st_value *vallist, st_value *result)
 
 int funcOpenDir(int func, st_var **var, st_value *vallist, st_value *result)
 {
-	char filename[PATH_MAX+1];
+	char matchpath[PATH_MAX+1];
+	char *path;
 	int snum;
+	int ret;
 	
 	for(snum=0;snum < MAX_DIR_STREAMS;++snum) if (!dir_stream[snum]) break;
 	if (snum == MAX_DIR_STREAMS) return ERR_MAX_DIR_STREAMS;
 
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
 
-	/* Wildcards allowed */
-	if (matchPath(S_IFDIR,vallist[0].sval,filename,TRUE) != OK)
-		copyStr(filename,vallist[0].sval,PATH_MAX);
+	MATCHPATH(S_IFDIR)
 
 	/* As with open() don't just error if we can't open dir, return
 	   zero and set system error */
-	if (!(dir_stream[snum] = opendir(filename)))
+	if (!(dir_stream[snum] = opendir(matchpath)))
 	{
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
 		setValue(result,VAL_NUM,NULL,0);
@@ -1367,19 +1382,20 @@ int funcGetDirStr(int func, st_var **var, st_value *vallist, st_value *result)
 /*** Change directory ***/
 int funcChDirStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
-	char filename[PATH_MAX+1];
+	char matchpath[PATH_MAX+1];
+	char *path;
+	int ret;
 
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
 
-	if (matchPath(S_IFDIR,vallist[0].sval,filename,TRUE) != OK)
-		copyStr(filename,vallist[0].sval,PATH_MAX);
+	MATCHPATH(S_IFDIR)
 
-	if (chdir(filename) == -1)
+	if (chdir(matchpath) == -1)
 	{
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
 		setValue(result,VAL_STR,"",0);
 	}
-	else setValue(result,VAL_STR,filename,0);
+	else setValue(result,VAL_STR,matchpath,0);
 	return OK;
 }
 
@@ -1387,9 +1403,13 @@ int funcChDirStr(int func, st_var **var, st_value *vallist, st_value *result)
 
 
 /*** Create a new directory ***/
-int funcMkDir(int func, st_var **var, st_value *vallist, st_value *result)
+int funcMkDirStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
+	char matchpath[PATH_MAX+1];
 	mode_t perms;
+	char *path;
+	char *ptr;
+	int ret;
 
 	/* If we have permissions then sanity check */
 	if (result->dval > 1)
@@ -1401,12 +1421,37 @@ int funcMkDir(int func, st_var **var, st_value *vallist, st_value *result)
 	else perms = 0777;
 
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
-	if (mkdir(vallist[0].sval,perms) == -1)
+
+	path = vallist[0].sval;
+
+	if (hasWildCards(path))
+	{
+		/* Don't try and match last path section because it doesn't
+		   exist yet */
+		if ((ptr = strrchr(path,'/')))
+		{
+			if (ptr == path) return OK;
+			*ptr = 0;
+		}
+		ret = matchPath(S_IFDIR,path,matchpath,TRUE);
+		if (ptr) *ptr = '/';
+		if (ret != OK) return OK;
+		if (ptr)
+		{
+			/* Don't allow wildcards in last section */
+			if (hasWildCards(ptr)) return OK;
+			if (!appendPath(matchpath,ptr))
+				return ERR_PATH_TOO_LONG;
+		}
+	}
+	else if (!copyStr(matchpath,path,PATH_MAX)) return ERR_PATH_TOO_LONG;
+
+	if (mkdir(matchpath,perms) == -1)
 	{
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
-		setValue(result,VAL_NUM,"",0);
+		setValue(result,VAL_STR,"",0);
 	}
-	else setValue(result,VAL_NUM,"",1);
+	else setValue(result,VAL_STR,matchpath,0);
 	return OK;
 }
 
@@ -1449,28 +1494,42 @@ int funcSeek(int func, st_var **var, st_value *vallist, st_value *result)
 
 
 
-/*** Delete a file or directory. Returns the name of the object deleted else
+/*** Delete a file system object. Returns the name of the object deleted else
      returns empty string if it failed ***/
-int funcRmFileOrDirStr(
-	int func, st_var **var, st_value *vallist, st_value *result)
+int funcRmFSOStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
-	char filename[PATH_MAX+1];
+	char matchpath[PATH_MAX+1];
+	char *path;
+	int ret;
 
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
 
-	if (matchPath(
-		(func == FUNC_RMFILE) ? S_IFREG : S_IFDIR,
-		vallist[0].sval,filename,TRUE) != OK)
-	{
-		copyStr(filename,vallist[0].sval,PATH_MAX);
-	}
+	MATCHPATH(S_IFANY);
 
-	if (remove(filename) == -1)
+	switch(func)
+	{
+	case FUNC_RMFILE:
+		/* Deletes files or links */
+		ret = unlink(matchpath);
+		break;
+	case FUNC_RMDIR:
+		/* Deletes directories */
+		ret = rmdir(matchpath);
+		break;
+	case FUNC_RMFSO:
+		/* Deletes anything */
+		ret = remove(matchpath);
+		break;
+	default:
+		assert(0);
+	}
+	
+	if (ret == -1)
 	{
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
 		setValue(result,VAL_STR,"",0);
 	}
-	else setValue(result,VAL_STR,filename,0);
+	else setValue(result,VAL_STR,matchpath,0);
 
 	return OK;
 }
@@ -1478,21 +1537,25 @@ int funcRmFileOrDirStr(
 
 
 
-int funcChMod(int func, st_var **var, st_value *vallist, st_value *result)
+int funcChModStr(int func, st_var **var, st_value *vallist, st_value *result)
 {
-	char filename[PATH_MAX+1];
+	char matchpath[PATH_MAX+1];
+	char *path;
 	mode_t perms;
+	int ret;
 
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
-
 	perms = (mode_t)vallist[1].dval;
 	if (perms < 0 || perms > MAX_PERMS) return ERR_INVALID_FILE_PERMS;
 
-	/* Expand wildcards */
-	if (matchPath(S_IFANY,vallist[0].sval,filename,TRUE) != OK)
-		copyStr(filename,vallist[0].sval,PATH_MAX);
+	MATCHPATH(S_IFDIR);
 
-	setValue(result,VAL_NUM,"",chmod(filename,perms) == -1 ? 0 : 1);
+	if (chmod(matchpath,perms) == -1)
+	{
+		setValue(syserror_var->value,VAL_NUM,NULL,errno);
+		setValue(result,VAL_STR,"",0);
+	}
+	else setValue(result,VAL_STR,matchpath,0);
 	return OK;
 }
 
@@ -1517,21 +1580,20 @@ int funcStatStr(int func, st_var **var, st_value *vallist, st_value *result)
 	struct stat fs;
 	struct passwd *pwd;
 	struct group *grp;
-	char filename[PATH_MAX+1];
+	char matchpath[PATH_MAX+1];
 	char str[PATH_MAX+100];
+	char *path;
 	char *ftype;
 	int ret;
 
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
 
-	/* Expand wildcards */
-	if (matchPath(S_IFANY,vallist[0].sval,filename,TRUE) != OK)
-		copyStr(filename,vallist[0].sval,PATH_MAX);
+	MATCHPATH(S_IFDIR);
 
 	if (func == FUNC_STAT)
-		ret = stat(filename,&fs);
+		ret = stat(matchpath,&fs);
 	else
-		ret = lstat(filename,&fs);
+		ret = lstat(matchpath,&fs);
 
 	/* If we can't stat a file return an empty string and set the 
 	   system errror */
@@ -1571,7 +1633,7 @@ int funcStatStr(int func, st_var **var, st_value *vallist, st_value *result)
 		(long)fs.st_mtime,
 		(long)fs.st_ctime,
 		(long)fs.st_nlink,
-		filename);
+		matchpath);
 
 	setValue(syserror_var->value,VAL_NUM,NULL,0);
 	setValue(result,VAL_STR,str,0);

@@ -1,6 +1,5 @@
 #include "globals.h"
 
-static int appendPath(char *to, char *add);
 static char *getUserDir(char *name, char *matchpath);
 
 /*** Goes through a particular directory and looks for an object type that
@@ -13,8 +12,8 @@ int matchPath(int type, char *pat, char *matchpath, bool toplevel)
 	char path[PATH_MAX+1];
 	char *ptr;
 	char *home_dir;
-	int err;
 	int stat_type;
+	int err;
 
 	/* Set up initial dir to read */
 	if (toplevel)
@@ -60,6 +59,7 @@ int matchPath(int type, char *pat, char *matchpath, bool toplevel)
 
 	/* Get section of pattern to match */
 	if ((ptr = strchr(pat,'/'))) *ptr = 0;
+	err = OK;
 
 	while((de = readdir(dir)))
 	{
@@ -74,11 +74,15 @@ int matchPath(int type, char *pat, char *matchpath, bool toplevel)
 		   the correct type */
 		if (!copyStr(path,matchpath,PATH_MAX))
 		{
-			err = ERR_FILENAME_TOO_LONG;
+			err = ERR_PATH_TOO_LONG;
 			goto DONE;
 		}
 		if (path[strlen(path)-1] != '/') appendPath(path,"/");
-		if ((err = appendPath(path,de->d_name)) != OK) goto DONE;
+		if (!appendPath(path,de->d_name))
+		{
+			err = ERR_PATH_TOO_LONG;
+			goto DONE;
+		}
 
 		if (stat(path,&fs) == -1)
 		{
@@ -95,7 +99,7 @@ int matchPath(int type, char *pat, char *matchpath, bool toplevel)
 			{
 				if (!copyStr(matchpath,path,PATH_MAX))
 				{
-					err = ERR_FILENAME_TOO_LONG;
+					err = ERR_PATH_TOO_LONG;
 					goto DONE;
 				}
 
@@ -119,7 +123,7 @@ int matchPath(int type, char *pat, char *matchpath, bool toplevel)
 		    (type == S_IFREG && stat_type == S_IFLNK))
 		{
 			if (!copyStr(matchpath,path,PATH_MAX))
-				err = ERR_FILENAME_TOO_LONG;
+				err = ERR_PATH_TOO_LONG;
 			goto DONE;
 		}
 	}
@@ -134,12 +138,22 @@ int matchPath(int type, char *pat, char *matchpath, bool toplevel)
 
 
 
+bool hasWildCards(char *path)
+{       
+	char *s;
+	for(s=path;*s && *s != '~' && *s != '*' && *s != '?';++s);
+	return (*s ? TRUE : FALSE);
+}
+
+
+
+
 int appendPath(char *to, char *add)
 {
 	int len = PATH_MAX - strlen(to);
-	if (len <= 0) return ERR_FILENAME_TOO_LONG;
+	if (len <= 0) return FALSE;
 	strncat(to,add,len);
-	return OK;
+	return TRUE;
 }
 
 

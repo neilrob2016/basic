@@ -141,11 +141,19 @@ void deleteDefExps()
 
 
 /*** Dump all expressions to the console ***/
-void dumpDefExps(FILE *fp, char *pat)
+int dumpDefExps(FILE *fp, char *pat)
 {
 	st_defexp *exp;
+	int cnt = 0;
 	for(exp=first_defexp;exp;exp=exp->next)
-		if (!pat || wildMatch(exp->name,pat,TRUE)) dumpDefExp(fp,exp);
+	{
+		if (!pat || wildMatch(exp->name,pat,TRUE))
+		{
+			dumpDefExp(fp,exp);
+			++cnt;
+		}
+	}
+	return cnt;
 }
 
 
@@ -158,7 +166,7 @@ void dumpDefExp(FILE *fp, st_defexp *exp)
 	st_token *next_token;
 	int i;
 
-	fprintf(fp,"!%-13s = ",exp->name);
+	fprintf(fp,"!%-14s = ",exp->name);
 
 	/* Tokens will be "DEFEXP <name> = ..." hence start i at 3 */
 	for(i=3;i < exp->runline->num_tokens;++i)

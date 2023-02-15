@@ -13,7 +13,6 @@ static int  doComRun(int comnum, st_runline *runline, int pc);
 static bool setBlockEnd(st_runline *runline, int start_com, int end_com);
 static int  getRunLineValue(
 	st_runline *runline, int *pc, int type, int eol, st_value *result);
-static bool hasWildcards(char *str);
 
 
 /****************************** DEFAULT FUNCS ********************************/
@@ -834,7 +833,9 @@ int comDump(int comnum, st_runline *runline)
 	FILE *fp;
 	st_token *token;
 	bool dump_contents;
+	int total;
 	int err;
+	int cnt;
 	int pc;
 
 	if (IS_COM_TYPE(&runline->tokens[1],COM_FULL))
@@ -864,22 +865,30 @@ int comDump(int comnum, st_runline *runline)
 	}
 
 	/* Dump specific wildcard matches */
-	for(;pc < runline->num_tokens;++pc)
+	for(total=0;pc < runline->num_tokens;++pc)
 	{
 		token = &runline->tokens[pc];
+		cnt = 0;
 
 		/* The ! isn't part of the name so won't match */
-		if (token->str[0] == '!') dumpDefExps(fp,token->str+1);
+		if (token->str[0] == '!') cnt = dumpDefExps(fp,token->str+1);
 		else
 		{
-			dumpVariables(fp,token->str,dump_contents);
-			dumpDefExps(fp,token->str);
+			cnt = dumpVariables(fp,token->str,dump_contents);
+			cnt += dumpDefExps(fp,token->str);
 		}
+		if (cnt)
+			total += cnt;
+		else
+			printf("%-15s [NO MATCH]\n",token->str);
+
 		if (++pc == runline->num_tokens || NOT_COMMA(pc)) break;
 	}
+	fprintf(fp,"%d matches.\n",total);
 
 	DONE:
 	if (fp != stdout) pclose(fp);
+	if (pc < runline->num_tokens) return ERR_SYNTAX;
 	return err;
 }
 
@@ -1877,7 +1886,7 @@ int comSave(int comnum, st_runline *runline)
 	else fullpath = result.sval;
 
 	/* Now match any wildcards in the filename */
-	if (hasWildcards(fullpath))
+	if (hasWildCards(fullpath))
 	{
 		if ((err = matchPath(S_IFREG,fullpath,path,TRUE)) == OK)
 		{
@@ -1886,7 +1895,7 @@ int comSave(int comnum, st_runline *runline)
 		}
 
 		/* Make sure non left */
-		if (hasWildcards(fullpath))
+		if (hasWildCards(fullpath))
 		{
 			err = ERR_INVALID_PATH;
 			goto ERROR;
@@ -3491,6 +3500,7 @@ int comDefExp(int comnum, st_runline *runline)
 int comHelp(int comnum, st_runline *runline)
 {
 	st_value result;
+	int match;
 	int pc;
 	int cnt;
 	int err;
@@ -3515,7 +3525,9 @@ int comHelp(int comnum, st_runline *runline)
 			clearValue(&result);
 			return ERR_INVALID_ARG;
 		}
+		match = TRUE;
 	}
+	else match = FALSE;
 
 	printf("\nCommands & keywords:");
 	for(i=cnt=0,pc=1;i < NUM_COMMANDS;++i)
@@ -3548,8 +3560,14 @@ int comHelp(int comnum, st_runline *runline)
 	}
 	if (cnt)
 	{
-		puts("\n\nNote: Functions with $ in their name return a string. All other functions");
-		puts("      return a number.\n");
+		if (match) puts("\n");
+		else
+		{
+			puts("\n\nNotes:");
+			puts("- You can do case insensitive wildcard searches with HELP. eg: help \"rm*$\"");
+			puts("- Functions with $ in their name return a string. All other functions return");
+			puts("  a number.\n");
+		}
 	}
 	else puts("\n\n*** No matches ***\n");
 
@@ -3747,14 +3765,4 @@ bool setBlockEnd(st_runline *runline, int start_com, int end_com)
 		}
 	}
 	return TRUE;
-}
-
-
-
-
-bool hasWildcards(char *str)
-{
-	char *s;
-	for(s=str;*s && *s != '*' && *s != '?';++s);
-	return (*s ? TRUE : FALSE);
 }

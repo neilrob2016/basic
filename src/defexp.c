@@ -1,5 +1,14 @@
 #include "globals.h"
 
+void initDefExps(void)
+{
+	first_defexp = NULL;
+	last_defexp = NULL;
+}
+
+
+
+
 int createDefExp(st_runline *runline)
 {
 	st_defexp *exp;
@@ -119,7 +128,7 @@ void deleteDefExp(st_runline *runline, bool force)
 
 
 /*** Delete all expressions ***/
-void deleteDefExps()
+void deleteDefExps(void)
 {
 	st_defexp *exp;
 	st_defexp *next;
@@ -134,7 +143,7 @@ void deleteDefExps()
 		free(exp);
 		resetTokenExps(exp);
 	}
-	first_defexp = last_defexp = NULL;
+	initDefExps();
 }
 
 

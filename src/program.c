@@ -5,12 +5,12 @@
 
 static int  addProgLine(st_progline *progline);
 static void removeProgLine(st_progline *progline);
-static void resetProgPointers();
+static void resetProgPointers(void);
 static void spacePad(FILE *fp, int len);
 
 
 /*** Called at startup, when a program is deleted, new'd or re-run ***/
-void subInitProgram()
+void subInitProgram(void)
 {
 	int i;
 
@@ -51,7 +51,7 @@ void subInitProgram()
 
 
 
-void initOnSettings()
+void initOnSettings(void)
 {
 	int i;
 	flags.on_break_clear = FALSE;
@@ -65,7 +65,7 @@ void initOnSettings()
 
 
 /*** Called at startup and when a program is deleted ***/
-void initProgram()
+void initProgram(void)
 {
 	flags.prog_new_runline_set = FALSE;
 	flags.angle_in_degrees = TRUE;
@@ -80,7 +80,7 @@ void initProgram()
 
 
 /*** Reset everything for a new run ***/
-void resetProgram()
+void resetProgram(void)
 {
 	subInitProgram();
 	initOnSettings();
@@ -125,10 +125,15 @@ bool processProgLine(st_progline *progline)
 		{
 			progline->linenum = (u_int)token->dval;
 			deleteTokenFromRunLine(progline->first_runline,0);
+			if ((err = createLabels(progline)) != OK)
+			{
+				doError(err,NULL);
+				return FALSE;
+			}
 			if ((err = addProgLine(progline)) != OK)
 			{
 				doError(ERR_INVALID_LINENUM,NULL);
-				ok = FALSE;
+				return FALSE;
 			}
 		}
 		else
@@ -143,8 +148,15 @@ bool processProgLine(st_progline *progline)
 	}
 	else
 	{
+		/* Need to add them because line could be: [abc]: goto "abc" */
+		if ((err = createLabels(progline)) != OK)
+		{
+			doError(err,NULL);
+			ok = FALSE;
+		}
 		/* Is a direct command - execute then delete */
-		ok = execProgLine(progline);
+		else ok = execProgLine(progline);
+
 		deleteProgLine(progline,FALSE,FALSE);
 	}
 	return ok;
@@ -166,13 +178,15 @@ st_progline *getProgLine(u_int linenum)
 
 
 /*** Delete everything associated with the program ***/
-void deleteProgram()
+void deleteProgram(void)
 {
 	st_progline *progline;
 	st_progline *next;
 
 	deleteDefExps();
 	deleteVariables(NULL);
+	/* More efficient than deleting per progline in the loop below */
+	deleteAllLabels(); 
 
 	for(progline = prog_first_line;progline;progline=next)
 	{
@@ -201,6 +215,8 @@ void deleteProgLine(st_progline *progline, bool update_ptrs, bool force)
 		removeProgLine(progline);
 		resetProgPointers();
 	}
+
+	deleteProgLineLabels(progline);
 
 	/* Delete the runlines */
 	for(runline=progline->first_runline;;runline=next)
@@ -848,7 +864,7 @@ void removeProgLine(st_progline *progline)
 
 
 /*** Reset jump pointers and delete any for loop structs ***/
-void resetProgPointers()
+void resetProgPointers(void)
 {
 	st_runline *runline;
 	int i;

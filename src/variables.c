@@ -17,6 +17,15 @@ int   getMapValue(st_var *var, char *key, st_value *result);
 void  resetRunLineVariablePointer(st_runline *runline, st_var *var);
 
 
+void initVariables(void)
+{
+	bzero(first_var,sizeof(first_var));
+	bzero(last_var,sizeof(last_var));
+}
+
+
+
+
 void createSystemVariables(int argc, char **argv, char **env)
 {
 	st_var *var;
@@ -160,7 +169,7 @@ void createSystemVariables(int argc, char **argv, char **env)
 
 
 /*** Reset the volatile variables ***/
-void resetSystemVariables()
+void resetSystemVariables(void)
 {
 	setValue(break_line_var->value,VAL_NUM,NULL,0);
 	setValue(eof_var->value,VAL_NUM,NULL,0);
@@ -177,7 +186,7 @@ void resetSystemVariables()
 
 
 
-void setTermVariables()
+void setTermVariables(void)
 {
 	if (term_cols_var)
 	{

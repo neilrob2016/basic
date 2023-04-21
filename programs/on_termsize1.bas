@@ -1,4 +1,4 @@
-   10 ON TERMSIZE GOSUB 140
+   10 ON TERMSIZE GOSUB "newsize"
    20 PRINT date$(time(),"%Y-%m-%d %H:%M:%S")
    30 ' 
    40 ' SLEEP will be interrupted if the TERMSIZE jump is triggered so
@@ -11,5 +11,6 @@
   110 UNTIL slen >= 1
   120 GOTO 20
   130 ' 
-  140 PRINT "Term size = ",$term_cols,"x",$term_rows
-  150 RETURN 
+  140 LABEL "newsize"
+  150 PRINT "Term size = ",$term_cols,"x",$term_rows
+  160 RETURN 

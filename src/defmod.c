@@ -1,6 +1,6 @@
 #include "globals.h"
 
-void initDefMods()
+void initDefMods(void)
 {
 	bzero(defmod,sizeof(defmod));
 }
@@ -8,7 +8,7 @@ void initDefMods()
 
 
 
-void clearDefMods()
+void clearDefMods(void)
 {
 	int i;
 	for(i=0;i < DEFMOD_SIZE;++i) if (defmod[i]) free(defmod[i]);
@@ -27,7 +27,7 @@ void addDefMod(int c, char *str)
 
 
 
-void dumpDefMods()
+void dumpDefMods(void)
 {
 	int i;
 	int cnt;

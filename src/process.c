@@ -1,6 +1,6 @@
 #include "globals.h"
 
-void initProcessList()
+void initProcessList(void)
 {
 	process_list = NULL;
 	processes_cnt = 0;
@@ -43,7 +43,7 @@ void removeProcessFromList(pid_t pid)
 
 
 /*** Kill and reap any child processes still running ***/
-void killChildProcesses()
+void killChildProcesses(void)
 {
 	pid_t pid;
 	int i;
@@ -66,7 +66,7 @@ void killChildProcesses()
 
 /*** This is a bit of a hack as I didn't design arrays to be dynamic, but fork()
      won't be called often so it doesn't matter much ***/
-void createProcessArray()
+void createProcessArray(void)
 {
 	int cnt;
 	int i;

@@ -36,7 +36,7 @@ int comUnexpected(int comnum, st_runline *runline)
 
 
 
-/*** Do absolutely nothing, not even a token count check ***/
+/*** For commands that don't need to be directly executed. Eg: LABEL, DATA */
 int comDoNothing(int comnum, st_runline *runline)
 {
 	return OK;
@@ -985,6 +985,7 @@ int comGotoGosub(int comnum, st_runline *runline)
 {
 	st_progline *progline;
 	st_value result;
+	st_label *lbl;
 	int err;
 	int pc;
 
@@ -1010,24 +1011,36 @@ int comGotoGosub(int comnum, st_runline *runline)
 			break;
 		}
 
-		/* Get line number from expression */
+		/* Get line number or label from expression */
 		initValue(&result);
 		pc = 1;
-		if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
+		if ((err = getRunLineValue(runline,&pc,VAL_BOTH,TRUE,&result)) != OK)
 			return err;
 
-		if (result.dval < 1) return ERR_INVALID_LINENUM;
-		if (!(progline = getProgLine(result.dval)))
-			return ERR_NO_SUCH_LINE;
-		runline->jump = progline->first_runline;
-		clearValue(&result);
+		if (result.type == VAL_STR)
+		{
+			if (!(lbl = getLabel(result.sval)))
+			{
+				clearValue(&result);
+				return ERR_UNDEFINED_LABEL;
+			}
+			runline->jump = lbl->runline;
+			clearValue(&result);
+		}
+		else
+		{
+			if (result.dval < 1) return ERR_INVALID_LINENUM;
+			if (!(progline = getProgLine(result.dval)))
+				return ERR_NO_SUCH_LINE;
+			runline->jump = progline->first_runline;
+		}
 		break;
 
 	default:
 		assert(0);
 	}
 
-	/* Its set to a runline not a basline because we could have more 
+	/* Its set to a runline not a progline because we could have more 
 	   runlines following in the program line that need to be executed 
 	   when we return. eg: 10 GOSUB 50: print "DONE" */
 	if (comnum == COM_GOSUB)
@@ -3280,7 +3293,9 @@ int comDelKey(int comnum, st_runline *runline)
 int comOn(int comnum, st_runline *runline)
 {
 	st_progline *progline;
+	st_runline *jump_runline;
 	st_token *token;
+	st_label *lbl;
 	st_value result;
 	bool is_cont;
 	bool is_break;
@@ -3315,6 +3330,7 @@ int comOn(int comnum, st_runline *runline)
 			return OK;
 		}
 		break;
+
 	case COM_BREAK:
 		/* ON BREAK CONT */
 		if (is_cont)
@@ -3340,6 +3356,7 @@ int comOn(int comnum, st_runline *runline)
 			return OK;
 		}
 		break;
+
 	case COM_TERMSIZE:
 		/* ON TERMSIZE CONT */
 		if (is_cont)
@@ -3358,6 +3375,7 @@ int comOn(int comnum, st_runline *runline)
 			return OK;
 		}
 		break;
+
 	default:
 		assert(0);
 	}
@@ -3365,12 +3383,26 @@ int comOn(int comnum, st_runline *runline)
 	/* Eval line number */
 	pc = 3;
 	initValue(&result);
-	if ((err = getRunLineValue(runline,&pc,VAL_NUM,TRUE,&result)) != OK)
+	if ((err = getRunLineValue(runline,&pc,VAL_BOTH,TRUE,&result)) != OK)
 		return err;
 
-	if (result.dval < 1) return ERR_INVALID_LINENUM;
-
-	if (!(progline = getProgLine(result.dval))) return ERR_NO_SUCH_LINE;
+	if (result.type == VAL_STR)
+	{
+		if (!(lbl = getLabel(result.sval)))
+		{
+			clearValue(&result);
+			return ERR_UNDEFINED_LABEL;
+		}
+		jump_runline = lbl->runline;
+		clearValue(&result);
+	}
+	else
+	{
+		if (result.dval < 1) return ERR_INVALID_LINENUM;
+		if (!(progline = getProgLine(result.dval)))
+			return ERR_NO_SUCH_LINE;
+		jump_runline = progline->first_runline;
+	}
 
 	/* Can only have one or the other set for obvious reasons */
 	if (IS_COM_TYPE(&runline->tokens[2],COM_GOTO))
@@ -3379,16 +3411,16 @@ int comOn(int comnum, st_runline *runline)
 		{
 		case COM_ERROR:
 			flags.on_error_cont = FALSE;
-			on_jump[ERR_GOTO] = progline;
+			on_jump[ERR_GOTO] = jump_runline;
 			on_jump[ERR_GOSUB] = NULL;
 			break;
 		case COM_BREAK:
 			flags.on_break_cont = FALSE;
-			on_jump[BRK_GOTO] = progline;
+			on_jump[BRK_GOTO] = jump_runline;
 			on_jump[BRK_GOSUB] = NULL;
 			break;
 		case COM_TERMSIZE:
-			on_jump[TERM_GOTO] = progline;
+			on_jump[TERM_GOTO] = jump_runline;
 			on_jump[TERM_GOSUB] = NULL;
 			break;
 		default:
@@ -3402,16 +3434,16 @@ int comOn(int comnum, st_runline *runline)
 	case COM_ERROR:
 		flags.on_error_cont = FALSE;
 		on_jump[ERR_GOTO] = NULL;
-		on_jump[ERR_GOSUB] = progline;
+		on_jump[ERR_GOSUB] = jump_runline;
 		break;
 	case COM_BREAK:
 		flags.on_break_cont = FALSE;
 		on_jump[BRK_GOTO] = NULL;
-		on_jump[BRK_GOSUB] = progline;
+		on_jump[BRK_GOSUB] = jump_runline;
 		break;
 	case COM_TERMSIZE:
 		on_jump[TERM_GOTO] = NULL;
-		on_jump[TERM_GOSUB] = progline;
+		on_jump[TERM_GOSUB] = jump_runline;
 		break;
 	default:
 		assert(0);
@@ -3673,7 +3705,7 @@ int getRunLineValue(
 		clearValue(result);
 		return ERR_SYNTAX;
 	}
-	if (type != VAL_UNDEF && result->type != type)
+	if ((type == VAL_NUM || type == VAL_STR) && result->type != type)
 	{
 		clearValue(result);
 		return ERR_INVALID_ARG;

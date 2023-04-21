@@ -4,12 +4,12 @@ CC=cc -D NO_OS_SET
 #LFA=-D LINE_FLOAT_ALGO
 
 # Linux 
-#CC=cc $(LFA)
-#LIBS=-lm -lcrypt
+CC=cc $(LFA)
+LIBS=-lm -lcrypt
 
 # MacOS
-#CC=cc $(LFA)
-#LIBS=-lm 
+CC=cc $(LFA)
+LIBS=-lm 
 
 # ARM
 #CC=aarch64-poky-linux-gcc --sysroot=/opt/fsl-imx-wayland/4.19-warrior/sysroots/aarch64-poky-linux
@@ -49,6 +49,7 @@ OBJS=\
 	watch.o \
 	process.o \
 	argv.o \
+	labels.o \
 	misc.o
 DEPS=globals.h Makefile
 
@@ -111,6 +112,9 @@ process.o: process.c $(DEPS)
 
 argv.o: argv.c $(DEPS)
 	$(CC) $(ARGS) argv.c 
+
+labels.o: labels.c $(DEPS)
+	$(CC) $(ARGS) labels.c 
 
 misc.o: misc.c $(DEPS)
 	$(CC) $(ARGS) misc.c

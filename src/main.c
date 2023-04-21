@@ -13,10 +13,10 @@
 
 char *prog_filename;
 
-static void setBuildOptions();
+static void setBuildOptions(void);
 static void parseCmdLine(int argc, char **argv);
-static void init();
-static void mainloop();
+static void init(void);
+static void mainloop(void);
 static void sigHandler(int sig);
 static void getTermSize(int sig);
 
@@ -38,7 +38,6 @@ int main(int argc, char **argv, char **env)
 	}
 	init();
 	createSystemVariables(argc,argv,env);
-	rawMode();
 	if (prog_filename)
 	{
 		if ((err = loadProgram(prog_filename,0,FALSE)) != OK)
@@ -53,7 +52,7 @@ int main(int argc, char **argv, char **env)
 
 /********************************* STATICS *********************************/
 
-void setBuildOptions()
+void setBuildOptions(void)
 {
 	build_options[0] = 0;
 #ifdef LINE_FLOAT_ALGO
@@ -179,28 +178,18 @@ int qsortCompare(const void *p1, const void *p2)
 
 
 
-void init()
+void init(void)
 {
-	int size;
 	int i;
 
-	size = sizeof(st_keybline) * num_keyb_lines;
-	assert((keyb_line = (st_keybline *)malloc(size)));
-	bzero(keyb_line,size);
-	bzero(first_var,sizeof(first_var));
-	bzero(last_var,sizeof(last_var));
 	flags.draw_prompt = TRUE;
-	first_defexp = NULL;
-	last_defexp = NULL;
-	next_keyb_line = 0;
-	keyb_lines_free = num_keyb_lines;
 	tracing_mode = TRACING_OFF;
 	indent_spaces = 4;
 	term_cols_var = NULL;
 	term_rows_var = NULL;
-	last_signal = 0;
 	term_rows = TERM_ROWS;
 	term_cols = TERM_COLS;
+	last_signal = 0;
 
 	bzero(stream,sizeof(stream));
 	bzero(popen_fp,sizeof(popen_fp));
@@ -212,10 +201,14 @@ void init()
 	qsort(sorted_commands,NUM_COMMANDS,sizeof(char *),qsortCompare);
 	qsort(sorted_functions,NUM_FUNCTIONS,sizeof(char *),qsortCompare);
 
+	initKeyboard();
+	initVariables();
 	initWatchVars();
 	initProcessList();
 	initDefMods();
+	initDefExps();
 	initProgram();
+	initLabels();
 
 	signal(SIGINT,sigHandler);
 	signal(SIGWINCH,getTermSize);
@@ -226,7 +219,7 @@ void init()
 
 
 
-void mainloop()
+void mainloop(void)
 {
 	char *line;
 

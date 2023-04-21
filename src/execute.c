@@ -1,6 +1,6 @@
 #include "globals.h"
 
-static bool pushGosub(st_progline *progline, st_runline *runline);
+bool pushGosub(st_runline *gosub_runline, st_runline *curr_runline);
 
 
 /*** Execute a program line which might be a direct line or the first line of
@@ -108,7 +108,7 @@ bool execRunLine(st_runline *runline)
 		/* If break handlers set use them */
 		if (on_jump[BRK_GOTO])
 		{
-			setNewRunLine(on_jump[BRK_GOTO]->first_runline);
+			setNewRunLine(on_jump[BRK_GOTO]);
 			return TRUE;
 		}
 		if (on_jump[BRK_GOSUB])
@@ -131,7 +131,7 @@ bool execRunLine(st_runline *runline)
 		{
 			if (on_jump[TERM_GOTO])
 			{
-				setNewRunLine(on_jump[TERM_GOTO]->first_runline);
+				setNewRunLine(on_jump[TERM_GOTO]);
 				return TRUE;
 			}
 			if (on_jump[TERM_GOSUB])
@@ -156,7 +156,7 @@ bool execRunLine(st_runline *runline)
 		/* See if error handlers set */
 		if (on_jump[ERR_GOTO])
 		{
-			setNewRunLine(on_jump[ERR_GOTO]->first_runline);
+			setNewRunLine(on_jump[ERR_GOTO]);
 			return TRUE;
 		}
 		else if (on_jump[ERR_GOSUB])
@@ -184,10 +184,10 @@ bool execRunLine(st_runline *runline)
 
 
 
-bool pushGosub(st_progline *progline, st_runline *runline)
+bool pushGosub(st_runline *gosub_runline, st_runline *curr_runline)
 {
 	if (return_stack_cnt == MAX_RETURN_STACK) return FALSE;
-	setNewRunLine(progline->first_runline);
-	return_stack[return_stack_cnt++] = runline->next;
+	setNewRunLine(gosub_runline);
+	return_stack[return_stack_cnt++] = curr_runline->next;
 	return TRUE;
 }

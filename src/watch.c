@@ -1,6 +1,6 @@
 #include "globals.h"
 
-void initWatchVars()
+void initWatchVars(void)
 {
 	watch_vars = NULL;
 	watch_alloc = 0;
@@ -71,7 +71,7 @@ int removeWatchVar(char *varname)
 
 
 
-void printWatchVars()
+void printWatchVars(void)
 {
 	int comma = 0;
 	int i;
@@ -100,7 +100,7 @@ void printWatchVars()
 
 
 
-void clearWatchVars()
+void clearWatchVars(void)
 {
 	int i;
 	for(i=0;i < watch_alloc;++i) FREE(watch_vars[i]);

@@ -7,18 +7,19 @@ static void drawKeyLineSection(char *from, char *to);
 static void clearScreenLine(int l);
 static bool copyHistoricCommand(int input_pos);
 
-void rawMode()
+
+void initKeyboard(void)
 {
-	static int saved = 0;
 	struct termios tio;
+	int size = sizeof(st_keybline) * num_keyb_lines;
+
+	assert((keyb_line = (st_keybline *)malloc(size)));
+	bzero(keyb_line,size);
+	keyb_lines_free = num_keyb_lines;
 
 	/* Get current settings */
 	tcgetattr(0,&tio);
-	if (!saved)
-	{
-		tcgetattr(0,&saved_tio);
-		saved = 1;
-	}
+	tcgetattr(0,&saved_tio);
 
 	/* Echo off */
 	tio.c_lflag &= ~ECHO;
@@ -39,7 +40,7 @@ void rawMode()
 
 
 
-void saneMode()
+void saneMode(void)
 {
 	tcsetattr(0,TCSANOW,&saved_tio);
 }

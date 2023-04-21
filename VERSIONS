@@ -288,3 +288,9 @@ February 2023
 - Renamed mkdir() to mkdir$()
 - Wildcards are now supported in mkdir$()
 - DUMP command now notes when there's no match for a name or pattern.
+
+
+April 2023
+==========
+1.10.0
+- Added LABEL command as an alternative to line numbers for GOTO and GOSUB.

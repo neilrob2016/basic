@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
-#define VERSION     "1.9.0"
+#define VERSION     "1.10.0"
 
 #define STDIN  0
 #define STDOUT 1
@@ -223,6 +223,7 @@ typedef struct st_runline
 	st_token *tokens;
 	st_for_loop *for_loop;
 	st_foreach_loop *foreach_loop;
+
 	/* Used by all loops, IF, GOTO, CHOOSE, CHOSEN, BREAK & DATA */
 	struct st_runline *jump;      
 	struct st_runline *else_jump; /* Used by IF */
@@ -283,6 +284,30 @@ typedef struct
 	int cursor_pos;
 } st_keybline;
 
+
+typedef struct st_label
+{
+	char *name;
+	st_runline *runline;
+	struct st_label *prev;
+	struct st_label *next;
+} st_label;
+
+
+typedef struct
+{
+	unsigned on_break_clear:1;
+	unsigned on_break_cont:1;
+	unsigned on_error_cont:1;
+	unsigned on_termsize_cont:1;
+	unsigned autorun:1;
+	unsigned executing:1;
+	unsigned child_process:1;
+	unsigned prog_new_runline_set:1;
+	unsigned listing_line_wrap:1;
+	unsigned angle_in_degrees:1;
+	unsigned draw_prompt:1;
+} st_flags;
 
 /********************************** ERRORS ********************************/
 
@@ -419,6 +444,12 @@ enum
 	ERR_INVALID_FILE_PERMS,
 	ERR_LP,
 	ERR_LP_INPUT,
+	ERR_INVALID_LABEL_NAME,
+
+	/* 95 */
+	ERR_INVALID_LABEL_LOC,
+	ERR_DUPLICATE_LABEL,
+	ERR_UNDEFINED_LABEL,
 
 	NUM_ERRORS
 };
@@ -557,13 +588,19 @@ char *error_str[NUM_ERRORS] =
 	"Invalid path or path not found",
 	"Invalid file/directory permissions",
 	"Cannot connect to the printer",
-	"Cannot input from the printer"
+	"Cannot input from the printer",
+	"Invalid label name",
+
+	/* 95 */
+	"Invalid label location",
+	"Duplicate label",
+	"Undefined label"
 };
 #else
 extern char *error_str[NUM_ERRORS];
 #endif
 
-/********************************** COMMANDS ********************************/
+/********************************** COMMANDS *********************************/
 
 enum
 {
@@ -716,6 +753,7 @@ enum
 
 	/* 105 */
 	COM_TERMSIZE,
+	COM_LABEL,
 
 	NUM_COMMANDS
 };
@@ -947,7 +985,8 @@ st_com command[NUM_COMMANDS] =
 	{ "RENAME",     comRename },
 
 	/* 105 */
-	{ "TERMSIZE",   comUnexpected }
+	{ "TERMSIZE",   comUnexpected },
+	{ "LABEL",      comDoNothing }
 };
 #else
 extern st_com command[NUM_COMMANDS];
@@ -1570,8 +1609,8 @@ EXTERN struct termios saved_tio;
 EXTERN st_keybline *keyb_line;
 
 EXTERN st_progline *prog_first_line;
-EXTERN st_progline *on_jump[NUM_ON_JUMPS];
 
+EXTERN st_runline *on_jump[NUM_ON_JUMPS];
 EXTERN st_runline *return_stack[MAX_RETURN_STACK];
 EXTERN st_runline *prog_new_runline;
 EXTERN st_runline *interrupted_runline;
@@ -1606,6 +1645,9 @@ EXTERN st_var *interrupted_var;
 EXTERN st_defexp *first_defexp;
 EXTERN st_defexp *last_defexp;
 
+EXTERN st_label *first_label;
+EXTERN st_label *last_label;
+
 EXTERN pid_t *process_list;
 
 EXTERN char *sorted_commands[NUM_COMMANDS];
@@ -1636,28 +1678,13 @@ EXTERN int stream[MAX_STREAMS];
 EXTERN FILE *popen_fp[MAX_STREAMS];
 EXTERN DIR *dir_stream[MAX_DIR_STREAMS];
 
-typedef struct
-{
-	unsigned on_break_clear:1;
-	unsigned on_break_cont:1;
-	unsigned on_error_cont:1;
-	unsigned on_termsize_cont:1;
-	unsigned autorun:1;
-	unsigned executing:1;
-	unsigned child_process:1;
-	unsigned prog_new_runline_set:1;
-	unsigned listing_line_wrap:1;
-	unsigned angle_in_degrees:1;
-	unsigned draw_prompt:1;
-} st_flags;
-
 EXTERN st_flags flags;
 
 /**************************** FORWARD DECLARATIONS **************************/
 
 /* keyboard.c */
-void rawMode();
-void saneMode();
+void initKeyboard(void);
+void saneMode(void);
 bool getLine(char **line);
 void clearKeyLine(int l);
 void addDefModStrToKeyLine(
@@ -1677,13 +1704,13 @@ void deleteRunLine(st_runline *runline, bool force);
 void deleteTokenFromRunLine(st_runline *runline, int from);
 
 /* program.c */
-void subInitProgram();
-void initOnSettings();
-void resetProgram();
+void subInitProgram(void);
+void initOnSettings(void);
+void resetProgram(void);
 bool processProgLine(st_progline *progline);
 st_progline *getProgLine(u_int linenum);
-void initProgram();
-void deleteProgram();
+void initProgram(void);
+void deleteProgram(void);
 void deleteProgLine(st_progline *progline, bool update_ptrs, bool force);
 bool deleteProgLineByNum(u_int linenum);
 bool deleteProgLines(u_int from, u_int to);
@@ -1698,9 +1725,10 @@ bool execProgLine(st_progline *progline);
 bool execRunLine(st_runline *runline);
 
 /* variables.c */
+void initVariables(void);
 void createSystemVariables(int argc, char **argv, char **env);
-void resetSystemVariables();
-void setTermVariables();
+void resetSystemVariables(void);
+void setTermVariables(void);
 int  getOrCreateTokenVariable(st_token *token);
 int  reDimArray(st_var *var, int index_cnt, int *index);
 st_var *createVariable(char *name, int type, int index_cnt, int *index);
@@ -1716,7 +1744,7 @@ int deleteMapKeyValue(st_var *var, char *key);
 st_keyval *findKeyValue(st_var *var, char *key);
 int  validVariableName(char *name);
 void deleteVariable(st_var *var, st_runline *runline);
-void deleteVariables();
+void deleteVariables(st_runline *runline);
 void renameVariable(st_var *var, char *new_name);
 int  dumpVariables(FILE *fp, char *pat, bool dump_contents);
 void dumpVariable(FILE *fp, st_var *var, bool dump_contents);
@@ -1745,35 +1773,36 @@ bool hasWildCards(char *path);
 int  appendPath(char *to, char *add);
 
 /* defexp.c */
+void initDefExps(void);
 int createDefExp(st_runline *runline);
 st_defexp *getDefExp(char *name);
 void renameDefExp(st_defexp *exp, char *new_name);
 void deleteDefExp(st_runline *runline, bool force);
-void deleteDefExps();
+void deleteDefExps(void);
 int  dumpDefExps(FILE *fp, char *pat);
 void dumpDefExp(FILE *fp, st_defexp *exp);
 
 /* defkeys.c */
-void initDefMods();
-void clearDefMods();
+void initDefMods(void);
+void clearDefMods(void);
 void addDefMod(int c, char *str);
-void dumpDefMods();
+void dumpDefMods(void);
 
 /* watch.c */
-void initWatchVars();
+void initWatchVars(void);
 int  findWatchVar(char *varname);
 int  addWatchVar(char *varname);
 int  removeWatchVar(char *varname);
-void printWatchVars();
-void clearWatchVars();
+void printWatchVars(void);
+void clearWatchVars(void);
 void printWatchLet(st_var *var, char *key, int arrpos, st_value *value);
 
 /* procs.c */
-void initProcessList();
+void initProcessList(void);
 void addProcessToList(pid_t pid);
 void removeProcessFromList(pid_t pid);
-void killChildProcesses();
-void createProcessArray();
+void killChildProcesses(void);
+void createProcessArray(void);
 
 /* draw.c */
 void locate(int x, int y);
@@ -1796,11 +1825,19 @@ void  toLowerStr(char *str);
 bool  wildMatch(char *str, char *pat, bool case_sensitive);
 char *addFileExtension(char *filename);
 
+/* labels.c */
+void initLabels(void);
+int  createLabels(st_progline *progline);
+void deleteProgLineLabels(st_progline *progline);
+void deleteAllLabels(void);
+void clearLabels(void);
+st_label *getLabel(char *name);
+
 /* misc.c */
 void   doError(int err, st_progline *progline);
-double getCurrentTime();
+double getCurrentTime(void);
 void   printTrace(int linenum, char *type, char *name);
-void   ready();
-void   prompt();
+void   ready(void);
+void   prompt(void);
 char   pressAnyKey(char *msg);
 void   doExit(int code);

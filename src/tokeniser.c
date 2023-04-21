@@ -1,22 +1,22 @@
 #include "globals.h"
 
-static st_runline *checkEOLCommand(
+static st_runline  *checkEOLCommand(
 	st_progline *progline, st_runline *runline, st_token *token);
-static st_runline *checkSOLCommand(
+static st_runline  *checkSOLCommand(
 	st_progline *progline, st_runline *runline, st_token *token);
-static bool        commandSanityCheck(st_progline *progline);
-static bool        isSingleCharOp(char c);
-static st_progline *createProgLine();
-static void        addRunLineToProgLine(
+static bool         commandSanityCheck(st_progline *progline);
+static bool         isSingleCharOp(char c);
+static st_progline *createProgLine(void);
+static void         addRunLineToProgLine(
 	st_progline *progline, st_runline *runline);
-static int         countBrackets(st_progline *progline);
-static st_runline *createRunLine();
-static st_token   *createToken(st_runline *runline);
-static void        deleteEndToken(st_runline *runline);
-static void        processTokens(st_runline *runline);
-static void        addCharToToken(st_token *token, char c);
-static int         setTokenType(st_token *token);
-static void        clearToken(st_token *token);
+static int          countBrackets(st_progline *progline);
+static st_runline  *createRunLine(st_progline *progline);
+static st_token    *createToken(st_runline *runline);
+static void         deleteEndToken(st_runline *runline);
+static void         processTokens(st_runline *runline);
+static void         addCharToToken(st_token *token, char c);
+static int          setTokenType(st_token *token);
+static void         clearToken(st_token *token);
 
 /*****************************************************************************/
 
@@ -37,6 +37,7 @@ st_progline *tokenise(char *line)
 	bool in_rem;
 	int err;
 	char *s;
+	char c;
 
 	progline = createProgLine();
 	runline = createRunLine(progline);
@@ -47,13 +48,15 @@ st_progline *tokenise(char *line)
 
 	for(s=line;*s;++s)
 	{
+		c = *s;
+
 		/* Just keep adding characters to the token */
 		if (in_rem)
 		{
-			addCharToToken(token,*s);
+			addCharToToken(token,c);
 			continue;
 		}
-		switch(*s)
+		switch(c)
 		{
 		case '"':
 			if (in_quotes)
@@ -84,7 +87,7 @@ st_progline *tokenise(char *line)
 		case ':':
 			if (in_quotes)
 			{
-				addCharToToken(token,*s);
+				addCharToToken(token,c);
 				break;
 			}
 			if (runline->num_tokens)
@@ -113,7 +116,7 @@ st_progline *tokenise(char *line)
 			/* PRINT shortcut */
 			if (in_quotes)
 			{
-				addCharToToken(token,*s);
+				addCharToToken(token,c);
 				break;
 			}
 			if (token->str)
@@ -127,14 +130,14 @@ st_progline *tokenise(char *line)
 			if ((err = setTokenType(token)) != OK) goto ERROR;
 			token = createToken(runline);
 			break;
-			
+
 		default:
 			if (in_quotes)
 			{
-				addCharToToken(token,*s);
+				addCharToToken(token,c);
 				break;
 			}
-			if (isspace(*s))
+			if (isspace(c))
 			{
 				if (token->str)
 				{
@@ -148,7 +151,7 @@ st_progline *tokenise(char *line)
 			/* If its an operator character then set token and get 
 			   new one. We'll worry about multi character operators
 			   and negative numbers in processTokens() */
-			if (isSingleCharOp(*s))
+			if (isSingleCharOp(c))
 			{
 				/* Finish current token */
 				if (token->str)
@@ -158,7 +161,7 @@ st_progline *tokenise(char *line)
 					CHECK_TOKEN();
 					token = createToken(runline);
 				}
-				addCharToToken(token,*s);
+				addCharToToken(token,c);
 
 				if (!in_rem)
 				{
@@ -167,7 +170,7 @@ st_progline *tokenise(char *line)
 					token = createToken(runline);
 				}
 			}
-			else addCharToToken(token,*s);
+			else addCharToToken(token,c);
 		}
 	}
 	if (in_quotes) 
@@ -483,7 +486,7 @@ bool isSingleCharOp(char c)
 
 /******************************** PROGRAM LINE *******************************/
 
-st_progline *createProgLine()
+st_progline *createProgLine(void)
 {
 	st_progline *progline;
 

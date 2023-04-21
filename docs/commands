@@ -509,29 +509,64 @@ Also note that if the IF statement is a direct command, ie not in a program,
 then the FI is not required.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-GOTO <line number or expression>
+GOTO <line number/label name or expression>
 
-This causes execution of the program to jump to the given line number. eg:
+This causes execution of the program to jump to the given line number or
+line where the label is. Labels are denoted by opening and closing square
+brackets and must be the first thing on a line. eg:
 
 10 PRINT "hello"
 20 GOTO 2*5
 
+10 LABEL "hello"
+20 PRINT "hello"
+30 GOTO "hel" + "lo"
+
 Note that RENUMber only works if the goto line is not part of an expression.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-GOSUB <line number or expression> - RETURN
+GOSUB <line number/label/name or expression> 
 
 As per GOTO exception that the line number we jump from is stored on a stack
 and the runline immediately following it can be jumped back to using RETURN.
 eg:
 
-   10 PRINT "Start"
-   20 GOSUB 100: PRINT "Returned from gosub"
-   30 STOP 
-  100 PRINT "In subroutine"
-  110 RETURN 
+   10 DATA 70,"sub2"
+   20 AUTORESTORE 10
+   30 READ sub
+   40 GOSUB sub
+   50 GOTO 30
+   60 ' 
+   70 PRINT "SUB 1"
+   80 RETURN 
+   90 ' 
+  100 LABEL "SUB2" 
+  110 PRINT "SUB 2"
+  120 RETURN 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+LABEL "<label name>"
+
+Used by GOTO and GOSUB to jump to as an alternative to line numbers. The name
+must be a quoted string, it cannot be an expression because the labels are
+parsed before the program runs so any variables or defexps used will not be
+set.
+
+The advantage of a label over a line number is that labels can appear in the
+middle of a line which also allows gotos to work on a direct line. eg:
+
+print "start": label "loop": print "looping": goto "loop"
+
+See: ../programs/labels.bas
 
 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+RETURN
+
+Returns from a subroutine called by GOSUB.
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Loops
 ==============================================================================
 FOR <var> = <start value> TO <end value> [STEP <stepping>]
@@ -994,7 +1029,7 @@ system array.
 
 Error handling
 ===============================================================================
-ON ERROR GOTO/GOSUB <line>
+ON ERROR GOTO/GOSUB <line>/<label>
 ON ERROR CONT/BREAK
 
 This command construct allows you to set the behaviour when a BASIC error
@@ -1012,7 +1047,7 @@ To reset back to default behaviour use "ON ERROR BREAK". eg:
 
 Miscellanious
 ===============================================================================
-ON BREAK GOTO/GOSUB <line>
+ON BREAK GOTO/GOSUB <line>/<label>
 ON BREAK CONT/BREAK/CLEAR
 
 This works in the same way as ON ERROR except it sets the behaviour for when
@@ -1020,7 +1055,7 @@ Control-C is pressed in an attempt to interrupt the program. Be careful using
 this as you can make a program unkillable except by killing the interpreter
 itself. eg:
 
-   10 ON BREAK GOSUB 90
+   10 ON BREAK GOSUB "i can't die"
    20 DIM i
    30 PRINT "Sleeping..."
    40 FOR i = 1 TO 10
@@ -1028,8 +1063,9 @@ itself. eg:
    60     SLEEP 1
    70 NEXT 
    80 STOP 
-   90 PRINT "You can't kill me!"
-  100 RETURN 
+   90 LABEL "i can't die"
+  100 PRINT "You can't kill me!"
+  110 RETURN 
 
 GOTO : The program will jump to the given line. RETURN cannot be used. This
        resets any GOSUB or CONT settings.
@@ -1042,7 +1078,7 @@ CLEAR: This deletes all user variables which can be useful if you don't wish
        works in conjunction with other ON BREAK options.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-ON TERMSIZE GOTO/GOSUB <line>
+ON TERMSIZE GOTO/GOSUB <line>/<label>
 ON TERMSIZE CONT
 ON TERMSIZE BREAK
 
@@ -1051,7 +1087,9 @@ changed. Note that once a jump line is set INPUT and SLEEP will be interrupted
 when a size change occurs and you'll have to account for this in your code.
 To reset to default behaviour enter "ON TERMSIZE CONT".
 
-See: programs/termsize.bas
+See:
+   programs/termsize1.bas
+   programs/termsize2.bas
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 DUMP/LDUMP [FULL] [<var/exp pattern>[,<var/exp pattern> * N]]

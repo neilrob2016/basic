@@ -16,7 +16,7 @@ void doError(int err, st_progline *progline)
 
 
 
-double getCurrentTime()
+double getCurrentTime(void)
 {
 	struct timeval tv;
 
@@ -47,7 +47,7 @@ void printTrace(int linenum, char *type, char *name)
 
 
 
-void ready()
+void ready(void)
 {
 	puts("READY");
 }
@@ -55,7 +55,7 @@ void ready()
 
 
 
-void prompt()
+void prompt(void)
 {
 	/* Turned off by EDIT command */
 	if (flags.draw_prompt)

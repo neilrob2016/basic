@@ -124,10 +124,9 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 				err = ERR_INVALID_ARG;
 				goto ERROR;
 			}
-			if (!token->var && 
-			    !(token->var = getVariable(token->str)))
+			if (!token->var && !(token->var = getVariable(token)))
 			{
-				err = ERR_UNDEFINED_VAR_FUNC;
+				err = ERR_UNDEFINED_VAR_OR_FUNC;
 				goto ERROR;
 			}
 			var[pnum] = token->var;

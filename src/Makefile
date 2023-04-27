@@ -1,15 +1,12 @@
 CC=cc -D NO_OS_SET
-# The line drawing algorithm in drawLine() now uses integers by default instead
-# of floats. Uncomment this to use the old floating point algorithm.
-#LFA=-D LINE_FLOAT_ALGO
 
 # Linux 
-CC=cc $(LFA)
-LIBS=-lm -lcrypt
+#CC=cc $(LFA)
+#LIBS=-lm -lcrypt
 
 # MacOS
-CC=cc $(LFA)
-LIBS=-lm 
+#CC=cc $(LFA)
+#LIBS=-lm 
 
 # ARM
 #CC=aarch64-poky-linux-gcc --sysroot=/opt/fsl-imx-wayland/4.19-warrior/sysroots/aarch64-poky-linux

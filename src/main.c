@@ -55,9 +55,6 @@ int main(int argc, char **argv, char **env)
 void setBuildOptions(void)
 {
 	build_options[0] = 0;
-#ifdef LINE_FLOAT_ALGO
-	strcpy(build_options,"LINE_FLOAT_ALGO ");
-#endif
 #ifdef NO_CRYPT
 	strcat(build_options,"NO_CRYPT ");
 #endif

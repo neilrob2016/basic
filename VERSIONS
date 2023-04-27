@@ -294,3 +294,13 @@ April 2023
 ==========
 1.10.0
 - Added LABEL command as an alternative to line numbers for GOTO and GOSUB.
+
+1.10.1
+- Added labels to DUMP command output with FULL option is used.
+- Map variables can now be created directly via assignment in non strict mode
+  instead of needing a DIM.
+- Internal efficiency updates that have given up to a 15% speed improvement
+  in some instances.
+- Removed disused floating point line drawing algo and improved integer version.
+- Fixed a number of bugs in RENAME functionality.
+- Memory leak bug fixes

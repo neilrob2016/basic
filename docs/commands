@@ -300,10 +300,13 @@ Variable declarations can be chained:
 
 DIM a="one",b,c="three"
 
-Note:
+Notes:
 As of version 1.2.0 strict mode which enforces explicitly dimensioning standard
 variables with a DIM before using them in assignments, FOR, FOREACH and READ
 is no longer the default. The -s command line option switches it back on. 
+
+As of version 1.10.1 map variables no longer need to be dimensioned first in
+non strict mode and can be created with an assignment.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CDIM <var>[#/@][(<arrsize>)] [= <value>][,<var>...]
@@ -317,8 +320,8 @@ is the same as
 CLEAR a(10)
 DIM a(10)
 
-except that if the variable does not already exist it will not error whereas
-CLEAR will.
+The only difference is that if the variable does not already exist CDIM will 
+not error whereas CLEAR would.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 REDIM <array var>(<arrsize>) [= <expression>[,<var> * N]]
@@ -548,17 +551,19 @@ eg:
 LABEL "<label name>"
 
 Used by GOTO and GOSUB to jump to as an alternative to line numbers. The name
-must be a quoted string, it cannot be an expression because the labels are
-parsed before the program runs so any variables or defexps used will not be
-set.
+must be a quoted string but can be anything (even an empty string), but it 
+cannot be an expression because the labels are parsed before the program runs 
+when variables or defexps are not yet created.
 
 The advantage of a label over a line number is that labels can appear in the
 middle of a line which also allows gotos to work on a direct line. eg:
 
 print "start": label "loop": print "looping": goto "loop"
 
-See: ../programs/labels.bas
+Note that because of the way labels are stored and looked up, the longer the
+label name the slower the lookup so try and keep label names fairly short.
 
+See: ../programs/labels.bas
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 RETURN
@@ -1094,13 +1099,19 @@ See:
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 DUMP/LDUMP [FULL] [<var/exp pattern>[,<var/exp pattern> * N]]
 
-If used on its own these commands dumps the names and values of all variables
-and defined expressions (DEFEXP) the interpreter currently holds. If specific
-names or patterns are given then it dumps the given variables or expressions
-that match. If FULL is used then array and map contents of variables are 
-dumped too. To dump a DEFEXP you must prepend the name with '!' unless you
-use a wildcard pattern. Note that wildcard patterns must be enclosed in
-quotes.
+If used on its own these commands dumps the names and values of all variables,
+defined expressions (DEFEXP) and labels (if FULL) the interpreter currently 
+holds.
+
+If specific names or patterns are given then it dumps the given variables or 
+expressions that match. If FULL is used then array and map contents of 
+variables along with labels are dumped too. To dump a DEFEXP you must prepend 
+the name with '!' unless you use a wildcard pattern. Note that wildcard 
+patterns must be enclosed in quotes.
+
+Label names are displayed enclosed in quotes because they can be any string 
+including empty string and a string containing spaces. Lookups specifically
+on labels are not currently supported.
 
   DUMP $version,$build_date
   DUMP "$*"

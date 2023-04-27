@@ -228,8 +228,8 @@ int getValue(st_runline *runline, int *pc, st_value *result)
 		break;
 
 	case TOK_VAR:
-		if (!token->var && !(token->var = getVariable(token->str)))
-			return ERR_UNDEFINED_VAR_FUNC;
+		if (!token->var && !(token->var = getVariable(token)))
+			return ERR_UNDEFINED_VAR_OR_FUNC;
 
 		/* Get array index if there is one */
 		if (++*pc < runline->num_tokens && 
@@ -255,10 +255,12 @@ int getValue(st_runline *runline, int *pc, st_value *result)
 		return ERR_SYNTAX;
 
 	case TOK_DEFEXP:
-		/* +1 to ignore '!' at start */
-		if (!token->exp && !(token->exp = getDefExp(token->str+1)))
+		/* +1 and -1 to ignore '!' at start */
+		if (!token->exp && 
+		    !(token->exp = getDefExp(token->str+1,token->len-1)))
+		{
 			return ERR_UNDEFINED_DEFEXP;
-
+		}
 		pc2 = 3;
 		if ((err = evalExpression(
 			token->exp->runline,&pc2,result)) != OK)

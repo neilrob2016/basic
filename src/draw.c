@@ -24,89 +24,53 @@ void drawString(int x, int y, char *str, int slen)
 
 
 
-/*** Includes floating point and integer drawing because I'm not sure which
-     is faster. FP code is simpler but less accurate. ***/
+/*** My own line drawing algo. Bresenhams seems rather complicated and 
+     inefficient with lots of multiplication ***/
 void drawLine(int x1, int y1, int x2, int y2, char *str, int slen)
 {
-	int cnt;
-	int adx;
-	int ady;
-	int dx;
-	int dy;
-	int i;
-#ifdef LINE_FLOAT_ALGO
-	double x;
-	double y;
-	double xadd;
-	double yadd;
-#else
 	int xadd;
 	int yadd;
-	int x;
-	int y;
-#endif
-	dx = x2 - x1;
-	dy = y2 - y1;
-	adx = abs(dx);
-	ady = abs(dy);
+	int cnt;
+	int i;
+
+	int dx = x2 - x1;
+	int dy = y2 - y1;
+	int adx = abs(dx);
+	int ady = abs(dy);
 
 	/* Avoid divide by zero */
 	if (!adx && !ady) return;
 
-	x = x1;
-	y = y1;
-#ifdef LINE_FLOAT_ALGO
-	if (adx > ady)
-	{
-		xadd = SGN(dx);
-		yadd = (double)dy / adx;
-		cnt = adx;
-	}
-	else
-	{
-		yadd = SGN(dy);
-		xadd = (double)dx / ady;
-		cnt = ady;
-	}
-	for(i=0;i < cnt;++i)
-	{
-		drawString(x,y,str,slen);
-		x += xadd;
-		y += yadd;
-	}
-#else
 	xadd = SGN(dx);
 	yadd = SGN(dy);
 	cnt = 0;
 	if (adx > ady)
 	{
+		/* Every time we increment x1 by 1 add ady to cnt. Then if
+		   cnt goes over adx increment y. eg: if adx = 10 and ady = 3
+		   then will inc y1 on 4th iteration. Then cnt will = 1 and 
+		   next time will only increment y1 on 3rd iter. etc */
 		for(i=0;i <= adx;++i)
 		{
-			/* A one line way of doing the same thing which
-			   is less efficient hence not used:
-			   y = y1 + dy * abs(x - x1) / adx;
-			 */
-			drawString(x,y,str,slen);
-			x += xadd;
+			drawString(x1,y1,str,slen);
+			x1 += xadd;
 			if ((cnt += ady) >= adx)
 			{
-				cnt %= adx;
-				y += yadd;
+				cnt -= adx;
+				y1 += yadd;
 			}
 		}
 	}
 	else for(i=0;i <= ady;++i)
 	{
-		/* As above: x = x1 + dx * abs(y - y1) / ady; */
-		drawString(x,y,str,slen);
-		y += yadd;
+		drawString(x1,y1,str,slen);
+		y1 += yadd;
 		if ((cnt += adx) >= ady)
 		{
-			cnt %= ady;
-			x += xadd;
+			cnt -= ady;
+			x1 += xadd;
 		}
 	}
-#endif
 }
 
 

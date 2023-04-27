@@ -712,7 +712,7 @@ int moveProgLine(u_int from, u_int to)
 
 
 
-int renameProgVarsAndDefExps(char *from, char *to, int *cnt)
+int renameProgVarsAndDefExps(st_token *fromtok, char *to, int *cnt)
 {
 	st_progline *pl;
 	st_runline *rl;
@@ -724,12 +724,12 @@ int renameProgVarsAndDefExps(char *from, char *to, int *cnt)
 	*cnt = 0;
 
 	/* If its a variable or defexp name then change them */
-	if ((var = getVariable(from)))
+	if ((var = getVariable(fromtok)))
 	{
 		if (!validVariableName(to)) return ERR_INVALID_VAR_NAME;
 		renameVariable(var,to);
 	}
-	else if ((exp = getDefExp(from)))
+	else if ((exp = getDefExp(fromtok->str,fromtok->len)))
 	{
 		if (!validVariableName(to)) return ERR_INVALID_DEFEXP_NAME;
 		renameDefExp(exp,to);
@@ -746,17 +746,21 @@ int renameProgVarsAndDefExps(char *from, char *to, int *cnt)
 
 				/* Only change variables and defexps because
 				   changing anything else is hassle */
-				if (IS_VAR(token) && !strcmp(token->str,from))
+				if (IS_VAR(token) && 
+				    !strcmp(token->str,fromtok->str))
 				{
 					free(token->str);
 					token->str = strdup(to);
 					assert(token->str);
+					token->len = strlen(to);
 					++*cnt;
 				}
-				else if (IS_DEFEXP(token) && !strcmp(token->str+1,from))
+				else if (IS_DEFEXP(token) && 
+				     !strcmp(token->str+1,fromtok->str))
 				{
 					free(token->str);
 					assert(asprintf(&token->str,"!%s",to) != -1);
+					token->len = strlen(token->str);
 					++*cnt;
 				}
 			}

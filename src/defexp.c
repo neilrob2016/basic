@@ -12,18 +12,18 @@ void initDefExps(void)
 int createDefExp(st_runline *runline)
 {
 	st_defexp *exp;
-	char *name;
+	st_token *tok;
 
-	name = runline->tokens[1].str;
-	if (getDefExp(name)) return ERR_DUPLICATE_DEFEXP;
-	if (getVariable(name)) return ERR_VAR_ALREADY_HAS_NAME;
+	tok = &runline->tokens[1];
+	if (getDefExp(tok->str,tok->len)) return ERR_DUPLICATE_DEFEXP;
+	if (getVariable(tok)) return ERR_VAR_ALREADY_HAS_NAME;
 
 	/* Same naming rules as variables */
-	if (!validVariableName(runline->tokens[1].str))
-		return ERR_INVALID_DEFEXP_NAME;
+	if (!validVariableName(tok->str)) return ERR_INVALID_DEFEXP_NAME;
 	
 	assert((exp = (st_defexp *)malloc(sizeof(st_defexp))));
-	exp->name = strdup(name);
+	exp->name = strdup(tok->str);
+	exp->len = tok->len;
 	exp->runline = runline;
 	exp->next = NULL;
 
@@ -50,12 +50,13 @@ int createDefExp(st_runline *runline)
 
 
 
-st_defexp *getDefExp(char *name)
+/*** Length is a lookup efficiency measure ***/
+st_defexp *getDefExp(char *name, int len)
 {
 	st_defexp *exp;
 
 	for(exp=first_defexp;exp;exp=exp->next)
-		if (!strcmp(exp->name,name)) return exp;
+		if (exp->len == len && !strcmp(exp->name,name)) return exp;
 	return NULL;
 }
 
@@ -83,6 +84,7 @@ void renameDefExp(st_defexp *exp, char *new_name)
 {
 	free(exp->name);
 	exp->name = strdup(new_name);
+	exp->len = strlen(new_name);
 	assert(exp->name);
 }
 

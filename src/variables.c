@@ -201,10 +201,10 @@ void setTermVariables(void)
 /*** A load of common code used in command.c grouped together ***/
 int getOrCreateTokenVariable(st_token *token)
 {
-	if ((token->var = getVariable(token->str))) return OK;
+	if ((token->var = getVariable(token))) return OK;
 
 	/* Has to be created using DIM if in strict mode */
-	if (strict_mode) return ERR_UNDEFINED_VAR_FUNC;
+	if (strict_mode) return ERR_UNDEFINED_VAR_OR_FUNC;
 	if (!validVariableName(token->str)) return ERR_INVALID_VAR_NAME;
 	token->var = createVariable(token->str,VAR_STD,0,NULL);
 	return OK;
@@ -223,6 +223,7 @@ st_var *createVariable(char *name, int type, int index_cnt, int *index)
 	bzero(var,sizeof(st_var));
 
 	assert((var->name = strdup(name)));
+	var->name_len = strlen(name);
 	var->type = type;
 
 	switch(type)
@@ -294,6 +295,7 @@ void addVarToList(st_var *var)
 	else first_var[c] = var;
 
 	last_var[c] = var;
+	var->next = NULL;
 }
 
 
@@ -352,14 +354,15 @@ int reDimArray(st_var *var, int index_cnt, int *index)
 
 
 
-st_var *getVariable(char *name)
+st_var *getVariable(st_token *tok)
 {
 	st_var *var;
-	int c;
-
-	c = INDEX_CHAR(name);
+	int c = INDEX_CHAR(tok->str);
 	for(var=first_var[c];var;var=var->next)
-		if (!strcmp(var->name,name)) return var;
+	{
+		if (var->name_len == tok->len && 
+		    !strcmp(var->name,tok->str)) return var;
+	}
 	return NULL;
 }
 
@@ -555,6 +558,7 @@ int setMapValue(st_var *var, char *key, st_value *value)
 		bzero(kv,sizeof(st_keyval));
 
 		assert((kv->key = strdup(key)));
+		kv->key_len = strlen(key);
 		initValue(&kv->value);
 
 		c = key[0];
@@ -611,12 +615,16 @@ int deleteMapKeyValue(st_var *var, char *key)
 
 
 
+/*** Calculating and using the key length will be slower on occasion but will 
+     improve the speed dramatically if there are more than a few keys of
+     mainly differeing lengths ***/
 st_keyval *findKeyValue(st_var *var, char *key)
 {
 	st_keyval *kv;
+	int len = strlen(key);
 
 	for(kv=var->first_keyval[(int)key[0]];kv;kv=kv->next)
-		if (!strcmp(kv->key,key)) return kv;
+		if (kv->key_len == len && !strcmp(kv->key,key)) return kv;
 	return NULL;
 }
 
@@ -785,6 +793,7 @@ void renameVariable(st_var *var, char *new_name)
 	FREE(var->name);
 	var->name = strdup(new_name);
 	assert(var->name);
+	var->name_len = strlen(new_name);
 
 	addVarToList(var);
 }

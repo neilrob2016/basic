@@ -539,7 +539,8 @@ int comClear(int comnum, st_runline *runline)
 	{
 		token = &runline->tokens[pc];
 		if (!IS_VAR(token)) return ERR_INVALID_ARG;
-		if (!(var = getVariable(token->str))) return ERR_UNDEFINED_VAR_FUNC;
+		if (!(var = getVariable(token)))
+			return ERR_UNDEFINED_VAR_OR_FUNC;
 		deleteVariable(var,runline);
 
 		if (++pc == runline->num_tokens) return OK;
@@ -575,27 +576,28 @@ int comDimLet(int comnum, st_runline *runline)
 	{
 		token = &runline->tokens[pc];
 		if (!IS_VAR(token)) return ERR_SYNTAX;
-		if (getDefExp(token->str)) return ERR_DEFEXP_ALREADY_HAS_NAME;
+		if (getDefExp(token->str,token->len))
+			return ERR_DEFEXP_ALREADY_HAS_NAME;
 
 		switch(comnum)
 		{
 		case COM_DIM:
-			var = getVariable(token->str);
+			var = getVariable(token);
 			if (var) return ERR_VAR_ALREADY_DEF;
 			break;
 
 		case COM_CDIM:
-			var = getVariable(token->str);
+			var = getVariable(token);
 			if (var) deleteVariable(var,runline);
 			break;
 
 		case COM_LET:
 			/* If strict set then error if var doesn't exist */
 			if (!token->var && 
-			    !(token->var = getVariable(token->str)) &&
+			    !(token->var = getVariable(token)) &&
 			    strict_mode)
 			{
-				return ERR_UNDEFINED_VAR_FUNC;
+				return ERR_UNDEFINED_VAR_OR_FUNC;
 			}
 			break;
 
@@ -641,12 +643,29 @@ int comDimLet(int comnum, st_runline *runline)
 				if ((err = getVarIndexes(runline,&pc,&icnt_or_key,index)) != OK)
 					goto ERROR;
 
-				/* Can't dimension with a string */
-				if (comnum != COM_LET && 
-				    icnt_or_key.type == VAL_STR)
+				/* If index is a string... */
+				if (icnt_or_key.type == VAL_STR)
 				{
-					err = ERR_INVALID_ARG;
-					goto ERROR;
+					if (comnum == COM_LET)
+					{
+						/* Can't index non map var with
+						   a string */
+						if (token->var)
+						{
+							if (token->var->type != VAR_MAP)
+							{
+								err = ERR_VAR_IS_NOT_MAP;
+								goto ERROR;
+							}
+						}
+						else type = VAR_MAP;
+					}
+					else
+					{
+						/* Can't DIM with a string */
+						err = ERR_INVALID_ARG;
+						goto ERROR;
+					}
 				}
 			}
 		}
@@ -695,8 +714,8 @@ int comDimLet(int comnum, st_runline *runline)
 				if (!validVariableName(token->str)) 
 					return ERR_INVALID_VAR_NAME;
 				token->var = createVariable(
-					token->str,VAR_STD,index_cnt,index);
-				clearValue(&icnt_or_key);
+					token->str,type,index_cnt,index);
+				assert(token->var);
 			}
 			break;
 
@@ -724,7 +743,11 @@ int comDimLet(int comnum, st_runline *runline)
 			}
 		}
 		/* Must have assignment with LET */
-		else if (comnum == COM_LET) return ERR_SYNTAX;
+		else if (comnum == COM_LET)
+		{
+			err = ERR_SYNTAX;
+			goto ERROR;
+		}
 
 		if (NOT_COMMA(pc)) break;
 	}
@@ -761,9 +784,9 @@ int comRedim(int comnum, st_runline *runline)
 		}
 
 		/* Variable must be defined to REDIM it */
-		if (!token->var && !(token->var = getVariable(token->str)))
+		if (!token->var && !(token->var = getVariable(token)))
 		{
-			err = ERR_UNDEFINED_VAR_FUNC;
+			err = ERR_UNDEFINED_VAR_OR_FUNC;
 			goto ERROR;
 		}
 
@@ -832,7 +855,7 @@ int comDump(int comnum, st_runline *runline)
 {
 	FILE *fp;
 	st_token *token;
-	bool dump_contents;
+	bool dump_full;
 	int total;
 	int err;
 	int cnt;
@@ -840,12 +863,12 @@ int comDump(int comnum, st_runline *runline)
 
 	if (IS_COM_TYPE(&runline->tokens[1],COM_FULL))
 	{
-		dump_contents = TRUE;
+		dump_full = TRUE;
 		pc = 2;
 	}
 	else
 	{
-		dump_contents = FALSE;
+		dump_full = FALSE;
 		pc = 1;
 	}
 	if (comnum == COM_LDUMP)
@@ -856,11 +879,12 @@ int comDump(int comnum, st_runline *runline)
 	else fp = stdout;
 
 	err = OK;
-	if (runline->num_tokens == 1 + dump_contents)
+	if (runline->num_tokens == 1 + dump_full)
 	{
 		/* Dump everything */
-		dumpVariables(fp,NULL,dump_contents);
+		dumpVariables(fp,NULL,dump_full);
 		dumpDefExps(fp,NULL);
+		if (dump_full) dumpLabels(fp,NULL);
 		goto DONE;
 	}
 
@@ -874,8 +898,9 @@ int comDump(int comnum, st_runline *runline)
 		if (token->str[0] == '!') cnt = dumpDefExps(fp,token->str+1);
 		else
 		{
-			cnt = dumpVariables(fp,token->str,dump_contents);
+			cnt = dumpVariables(fp,token->str,dump_full);
 			cnt += dumpDefExps(fp,token->str);
+			if (dump_full) cnt += dumpLabels(fp,token->str);
 		}
 		if (cnt)
 			total += cnt;
@@ -911,7 +936,7 @@ int comRename(int comnum, st_runline *runline)
 
 	if (!strcmp(fromtok->str,totok->str)) return ERR_RENAME_SAME;
 
-	if ((ret = renameProgVarsAndDefExps(fromtok->str,totok->str,&cnt)) != OK)
+	if ((ret = renameProgVarsAndDefExps(fromtok,totok->str,&cnt)) != OK)
 		return ret;
 	printf("%d renamings.\n",cnt);
 	return OK;
@@ -1019,7 +1044,7 @@ int comGotoGosub(int comnum, st_runline *runline)
 
 		if (result.type == VAL_STR)
 		{
-			if (!(lbl = getLabel(result.sval)))
+			if (!(lbl = getLabel(result.sval,result.slen)))
 			{
 				clearValue(&result);
 				return ERR_UNDEFINED_LABEL;
@@ -1610,9 +1635,9 @@ int comRead(int comnum, st_runline *runline)
 	{
 		token = &runline->tokens[pc];
 		if (!IS_VAR(token)) return ERR_SYNTAX;
-		if (!token->var && !(token->var = getVariable(token->str)))
+		if (!token->var && !(token->var = getVariable(token)))
 		{
-			if (strict_mode) return ERR_UNDEFINED_VAR_FUNC;
+			if (strict_mode) return ERR_UNDEFINED_VAR_OR_FUNC;
 			create_var = 1;
 		}
 		else create_var = 0;
@@ -3272,8 +3297,8 @@ int comDelKey(int comnum, st_runline *runline)
 	int err;
 
 	token = &runline->tokens[1];
-	if (!token->var && !(token->var = getVariable(token->str)))
-		return ERR_UNDEFINED_VAR_FUNC;
+	if (!token->var && !(token->var = getVariable(token)))
+		return ERR_UNDEFINED_VAR_OR_FUNC;
 
 	initValue(&result);
 	pc = 3;
@@ -3388,7 +3413,7 @@ int comOn(int comnum, st_runline *runline)
 
 	if (result.type == VAL_STR)
 	{
-		if (!(lbl = getLabel(result.sval)))
+		if (!(lbl = getLabel(result.sval,result.slen)))
 		{
 			clearValue(&result);
 			return ERR_UNDEFINED_LABEL;

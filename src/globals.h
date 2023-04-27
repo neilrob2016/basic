@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
-#define VERSION     "1.10.0"
+#define VERSION     "1.10.1"
 
 #define STDIN  0
 #define STDOUT 1
@@ -91,32 +91,30 @@
 #define TRUE   1
 #define EITHER 2
 
+#define CONTROL_D 4
+#define DEL1      8
+#define DEL2      127
+#define ESC       27
+
 #define TERM_ROWS         80
 #define TERM_COLS         25
 #define MAX_UCHAR         0xFF
 #define MAX_RETURN_STACK  1000
 #define MAX_INDEXES       5
 #define MAX_FUNC_PARAMS   10
+#define MAX_STREAMS       20
+#define MAX_DIR_STREAMS   10
 #define VAL_FIXED_STR_LEN 20
 #define CHAR_ALLOC        50
-
-#define CONTROL_D        4
-#define DEL1             8
-#define DEL2             127
-#define ESC              27
-#define MAX_ESC_SEQ_LEN  4
+#define NUM_F_KEYS        5
+#define DEFMOD_SIZE       (255 + NUM_F_KEYS)
+#define MAX_ESC_SEQ_LEN   4
 #define ESC_SEQ_PARTIAL  -1
 #define ESC_SEQ_INVALID  -2
 
 #ifndef PATH_MAX
 #define PATH_MAX 1024 /* Err on the side of caution & keep it small */
 #endif
-
-#define MAX_STREAMS     20
-#define MAX_DIR_STREAMS 10
-
-#define NUM_F_KEYS  5
-#define DEFMOD_SIZE (255 + NUM_F_KEYS)
 
 #define DEGS_PER_RADIAN 57.2957795
 
@@ -142,6 +140,7 @@ typedef struct
 typedef struct st_keyval
 {
 	char *key;
+	int key_len;
 	st_value value;
 	struct st_keyval *prev;
 	struct st_keyval *next;
@@ -151,6 +150,7 @@ typedef struct st_keyval
 typedef struct st_var
 {
 	char *name;
+	int name_len;
 	int type;
 
 	/* Arrays */
@@ -172,6 +172,7 @@ typedef struct st_var
 typedef struct st_defexp
 {
 	char *name;
+	int len;
 	struct st_runline *runline;
 	struct st_defexp *prev;
 	struct st_defexp *next;
@@ -288,6 +289,7 @@ typedef struct
 typedef struct st_label
 {
 	char *name;
+	int len;
 	st_runline *runline;
 	struct st_label *prev;
 	struct st_label *next;
@@ -323,7 +325,7 @@ enum
 	/* 5 */
 	ERR_MISSING_PARAMS,
 	ERR_TOO_MANY_PARAMS,
-	ERR_UNDEFINED_VAR_FUNC,
+	ERR_UNDEFINED_VAR_OR_FUNC,
 	ERR_VAR_ALREADY_DEF,
 	ERR_VAR_IS_NOT_ARRAY,
 
@@ -1617,8 +1619,8 @@ EXTERN st_runline *interrupted_runline;
 EXTERN st_runline *data_runline;
 EXTERN st_runline *data_autorestore_runline;
 
-EXTERN st_var *first_var[256];
-EXTERN st_var *last_var[256];
+EXTERN st_var *first_var[MAX_UCHAR+1];
+EXTERN st_var *last_var[MAX_UCHAR+1];
 EXTERN st_var *build_options_var;
 EXTERN st_var *error_var;
 EXTERN st_var *syserror_var;
@@ -1645,8 +1647,8 @@ EXTERN st_var *interrupted_var;
 EXTERN st_defexp *first_defexp;
 EXTERN st_defexp *last_defexp;
 
-EXTERN st_label *first_label;
-EXTERN st_label *last_label;
+EXTERN st_label *first_label[MAX_UCHAR+1];
+EXTERN st_label *last_label[MAX_UCHAR+1];
 
 EXTERN pid_t *process_list;
 
@@ -1718,7 +1720,7 @@ void setNewRunLine(st_runline *runline);
 int  loadProgram(char *filename, u_int merge_linenum, bool delprog);
 int  listProgram(FILE *fp, u_int from, u_int to, bool pause);
 int  moveProgLine(u_int from, u_int to);
-int  renameProgVarsAndDefExps(char *from, char *to, int *cnt);
+int  renameProgVarsAndDefExps(st_token *fromtok, char *to, int *cnt);
 
 /* execute.c */
 bool execProgLine(st_progline *progline);
@@ -1732,7 +1734,7 @@ void setTermVariables(void);
 int  getOrCreateTokenVariable(st_token *token);
 int  reDimArray(st_var *var, int index_cnt, int *index);
 st_var *createVariable(char *name, int type, int index_cnt, int *index);
-st_var *getVariable(char *name);
+st_var *getVariable(st_token *tok);
 int getVarIndexes(
 	st_runline *runline, int *pc, st_value *icnt_or_key, int *index);
 int getVarValue(
@@ -1775,7 +1777,7 @@ int  appendPath(char *to, char *add);
 /* defexp.c */
 void initDefExps(void);
 int createDefExp(st_runline *runline);
-st_defexp *getDefExp(char *name);
+st_defexp *getDefExp(char *name, int len);
 void renameDefExp(st_defexp *exp, char *new_name);
 void deleteDefExp(st_runline *runline, bool force);
 void deleteDefExps(void);
@@ -1831,7 +1833,8 @@ int  createLabels(st_progline *progline);
 void deleteProgLineLabels(st_progline *progline);
 void deleteAllLabels(void);
 void clearLabels(void);
-st_label *getLabel(char *name);
+st_label *getLabel(char *name, int len);
+int  dumpLabels(FILE *fp, char *pat);
 
 /* misc.c */
 void   doError(int err, st_progline *progline);

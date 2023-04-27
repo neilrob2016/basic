@@ -9,8 +9,7 @@ $interpreter  : Interpreter name
 $copyright    : Copyright information
 $version      : Interpreter version.
 $build_date   : Time and date interpreter was compiled.
-$build_options: Compile time build options = 
-                LINE_FLOAT_ALGO, CRYPT_HDR, DES_ONLY, NO_LOG2
+$build_options: Compile time build options = CRYPT_HDR, DES_ONLY, NO_LOG2
 $strict_mode  : 1 or 0 depending on whether strict mode is in force. The -n
                 command line option disables it.
 $argv         : Array of words given as command line arguments. Also does not 

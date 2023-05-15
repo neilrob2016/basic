@@ -901,7 +901,8 @@ LINE 1,1,20,20,"X"
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 LOCATE <x>,<y>
 
-Move the cursor to the given position. eg:
+Move the cursor to the given position. Any X or Y positions off screen are
+clipped to the nearest edge. eg:
 
    10 CLS 
    20 DIM i
@@ -953,9 +954,11 @@ colour - ie the text colour. eg:
 PLOT <x>,<y>[,<draw string>]
 
 This moves the cursor to the given location and writes either a space or
-the draw string if given. eg:
+the draw string if given. If the location is off screen nothing will be plotted
+unless the string is long enough to appear on the screen. eg:
 
 PLOT 10,20,"X"
+PLOT -3,10,"1234567890"
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 RECT <top left x>,<top left y>,<width>,<height>,<fill 0/1>[,<draw string>]

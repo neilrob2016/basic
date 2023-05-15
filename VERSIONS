@@ -304,3 +304,13 @@ April 2023
 - Removed disused floating point line drawing algo and improved integer version.
 - Fixed a number of bugs in RENAME functionality.
 - Memory leak bug fixes
+
+
+May 2023
+========
+1.10.2
+- Fixed indentation LIST bug with "ELSE IF" constructs.
+- Now using the efficient mid point algorithm to draw circles. Ovals still use
+  the trig method.
+- Fixed wrapping bug when drawing circles and rectangles.
+- Changed the way lines are printed in rectangles and circles

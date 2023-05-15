@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
-#define VERSION     "1.10.1"
+#define VERSION     "1.10.2"
 
 #define STDIN  0
 #define STDOUT 1
@@ -1808,12 +1808,12 @@ void createProcessArray(void);
 
 /* draw.c */
 void locate(int x, int y);
-void drawString(int x, int y, char *str, int slen);
 void drawLine(int x1, int y1, int x2, int y2, char *str, int slen);
 void drawRect(int x, int y, int width, int height, int fill, char *str, int slen);
 void drawCircle(
 	int x, int y,
 	int x_radius, int y_radius, int fill, char *str, int slen);
+void drawString(int x, int y, int len, char *str, int slen);
 
 /* argv.c */
 int  splitStringIntoArgv(char *str, char ***b_argv);

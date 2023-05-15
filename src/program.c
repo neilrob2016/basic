@@ -428,6 +428,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 	st_progline *progline;
 	st_runline *runline;
 	st_token *token;
+	st_token *prev_token;
 	st_token *next_token;
 	bool start;
 	bool in_rem;
@@ -438,7 +439,6 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 	int pause_linecnt;
 	int line_width;
 	int print_colon;
-	int prev_tok_was_com;
 	int ret;
 	int i;
 
@@ -446,12 +446,14 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 	loop_indent = 0;
 	linecnt = 0;
 	pause_linecnt = 0;
-	prev_tok_was_com = 0;
+	token = NULL;
 
 	for(progline=prog_first_line;
 	    progline && (!to || progline->linenum <= to) && last_signal != SIGINT;
 	    progline=progline->next)
 	{
+		prev_token = token;
+
 		/* Can't just continue else indentation fails */
 		print_line = (progline->linenum >= from);
 
@@ -502,6 +504,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 
 		for(runline=progline->first_runline;;runline=runline->next)
 		{
+			prev_token = token;
 			token = &runline->tokens[0];
 
 			if (print_line && print_colon)
@@ -514,10 +517,9 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 				     token->subtype != COM_ELSE)) fputc(':',fp);
 
 				/* Don't add a space if just printed command */
-				if (!prev_tok_was_com) fputc(' ',fp);
+				if (!IS_COM(prev_token)) fputc(' ',fp);
 			}
 			in_rem = IS_COM_TYPE(token,COM_REM);
-			prev_tok_was_com = 0;
 			start = TRUE;
 
 			for(i=0;i < runline->num_tokens;++i)
@@ -540,7 +542,6 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 					if (print_line) fputc('-',fp);
 				}
 
-				prev_tok_was_com = 0;
 				ret = 0;
 
 				switch(token->type)
@@ -553,8 +554,6 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 					break;
 
 				case TOK_COM:
-					prev_tok_was_com = 1;
-
 					/* If not start put leading space */
 					if (!start)
 					{
@@ -587,7 +586,8 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 						break;
 
 					case COM_IF:
-						if_indent += indent_spaces;
+						if (!IS_COM_TYPE(prev_token,COM_ELSE))
+							if_indent += indent_spaces;
 						break;
 
 					case COM_ELSE:

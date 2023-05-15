@@ -2747,7 +2747,7 @@ int comLocatePlot(int comnum, st_runline *runline)
 		slen = 1;
 	}
 
-	drawString(x,y,str,slen);
+	drawString(x,y,slen,str,slen);
 	clearValue(&result);
 	return OK;
 }

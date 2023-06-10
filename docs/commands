@@ -251,6 +251,9 @@ CHAIN "<program name>"[,<run argument>]
 As LOAD except after loading it will run the program. The optional 2nd parameter
 sets the system variable $run_arg.
 
+This command can be used in programs (even recursively) so that a program can
+automatically run another.
+
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 MERGE "<program name>"
 

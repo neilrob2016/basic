@@ -40,7 +40,7 @@ int main(int argc, char **argv, char **env)
 	createSystemVariables(argc,argv,env);
 	if (prog_filename)
 	{
-		if ((err = loadProgram(prog_filename,0,FALSE)) != OK)
+		if ((err = loadProgram(prog_filename,0,COM_LOAD,!flags.autorun)) != OK)
 			doError(err,NULL);
 	}
 	mainloop();
@@ -166,15 +166,6 @@ void parseCmdLine(int argc, char **argv)
 
 
 
-int qsortCompare(const void *p1, const void *p2)
-{
-	/* p1 and p2 are actually point to (char **), not (char *) */
-	return strcmp(*(char **)p1, *(char **)p2);
-}
-
-
-
-
 void init(void)
 {
 	int i;
@@ -220,7 +211,7 @@ void mainloop(void)
 {
 	char *line;
 
-	/* If -r given then run the loaded program immediately then exit */
+	/* If -a given then run the loaded program immediately then exit */
 	if (flags.autorun)
 	{
 		processProgLine(prog_first_line);

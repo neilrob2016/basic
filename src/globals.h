@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
-#define VERSION     "1.10.2"
+#define VERSION     "1.10.4"
 
 #define STDIN  0
 #define STDOUT 1
@@ -1717,7 +1717,7 @@ void deleteProgLine(st_progline *progline, bool update_ptrs, bool force);
 bool deleteProgLineByNum(u_int linenum);
 bool deleteProgLines(u_int from, u_int to);
 void setNewRunLine(st_runline *runline);
-int  loadProgram(char *filename, u_int merge_linenum, bool delprog);
+int  loadProgram(char *filename, u_int merge_linenum, int comnum, bool verbose);
 int  listProgram(FILE *fp, u_int from, u_int to, bool pause);
 int  moveProgLine(u_int from, u_int to);
 int  renameProgVarsAndDefExps(st_token *fromtok, char *to, int *cnt);
@@ -1837,6 +1837,7 @@ st_label *getLabel(char *name, int len);
 int  dumpLabels(FILE *fp, char *pat);
 
 /* misc.c */
+int    qsortCompare(const void *p1, const void *p2);
 void   doError(int err, st_progline *progline);
 double getCurrentTime(void);
 void   printTrace(int linenum, char *type, char *name);

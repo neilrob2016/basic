@@ -1,5 +1,13 @@
 #include "globals.h"
 
+int qsortCompare(const void *p1, const void *p2)
+{                       
+	/* p1 and p2 are actually point to (char **), not (char *) */
+	return strcmp(*(char **)p1, *(char **)p2);
+}     
+
+
+
 void doError(int err, st_progline *progline)
 {
 	if (progline && progline->linenum)

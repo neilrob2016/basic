@@ -1,7 +1,6 @@
 #include "globals.h"
 
-#define MAX_LINENUM    (u_int)0xFFFFFFFF  /* Max u_int value */
-#define PROGRESS_LINES 10
+#define MAX_LINENUM (u_int)-1  /* Max u_int value */
 
 static int  addProgLine(st_progline *progline);
 static void removeProgLine(st_progline *progline);
@@ -296,7 +295,7 @@ void setNewRunLine(st_runline *runline)
 
 /*** Load a program from disk. Will also load and run direct commands in the
      file too ***/
-int loadProgram(char *filename, u_int merge_linenum, bool delprog)
+int loadProgram(char *filename, u_int merge_linenum, int comnum, bool verbose)
 {
 	st_progline *progline;
 	st_token *token;
@@ -308,7 +307,6 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 	int alloced;
 	int len;
 	int err;
-	int linecnt;
 
 	line = NULL;
 	fp = NULL;
@@ -319,9 +317,12 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 	if ((err = matchPath(S_IFREG,filename,matchpath,TRUE)) != OK)
 		goto ERROR;
 	
-	if (!flags.autorun)
+	if (verbose)
 	{
-		printf("LOADING \"%s\": ",matchpath);
+		printf("%s \"%s\": ",
+			comnum == COM_CHAIN ? "CHAINING" : 
+			          (comnum == COM_LOAD ? "LOADING" : "MERGING"),
+			matchpath);
 		fflush(stdout);
 	}
 	if (!(fp = fopen(matchpath,"r")))
@@ -330,9 +331,8 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 		goto ERROR;
 	}
 
-	if (delprog) deleteProgram();
+	if (comnum != COM_MERGE) deleteProgram();
 	
-	linecnt = 0;
 	alloced = 0;
 	errno = 0;
 
@@ -355,12 +355,11 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 		/* EOL or EOF */
 		if (!ret || line[len] == '\n')
 		{
-			if (!flags.autorun && !(++linecnt % PROGRESS_LINES))
-				PRINT("=",1);
-
 			if (ret) line[len] = 0;
 			if (line[0])
 			{
+				if (verbose) PRINT("=",1);
+
 				if (!(progline = tokenise(line))) break;
 
 				/* If we're mergeing make sure we don't 
@@ -390,7 +389,7 @@ int loadProgram(char *filename, u_int merge_linenum, bool delprog)
 	}
 	fclose(fp);
 	FREE(line);
-	if (!flags.autorun) putchar('\n');
+	if (verbose) putchar('\n');
 	return OK;
 
 	ERROR: 
@@ -435,7 +434,6 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 	bool print_line;
 	int if_indent;
 	int loop_indent;
-	int linecnt;
 	int pause_linecnt;
 	int line_width;
 	int print_colon;
@@ -444,7 +442,6 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 
 	if_indent = 0;
 	loop_indent = 0;
-	linecnt = 0;
 	pause_linecnt = 0;
 	token = NULL;
 
@@ -452,6 +449,9 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 	    progline && (!to || progline->linenum <= to) && last_signal != SIGINT;
 	    progline=progline->next)
 	{
+		/* Show printer listing progress by line */
+		if (fp != stdout) PRINT("=",1);
+
 		prev_token = token;
 
 		/* Can't just continue else indentation fails */
@@ -668,14 +668,10 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 			/* Don't print a colon following THEN or ELSE if the
 			   line continues, it looks neater without them. */
 			print_colon = !token || 
-			              (!IS_COM_TYPE(token,COM_THEN) && !IS_COM_TYPE(token,COM_ELSE));
+			              (!IS_COM_TYPE(token,COM_THEN) && 
+			               !IS_COM_TYPE(token,COM_ELSE));
 		}
-		if (print_line)
-		{
-			if (fp != stdout && !(++linecnt % PROGRESS_LINES))
-				PRINT("=",1);
-			fputc('\n',fp);
-		}
+		if (print_line) fputc('\n',fp);
 	}
 	if (fp != stdout) write(STDOUT,"\n",1);
 	return OK;

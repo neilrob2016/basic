@@ -314,3 +314,16 @@ May 2023
   the trig method.
 - Fixed wrapping bug when drawing circles and rectangles.
 - Changed the way lines are printed in rectangles and circles
+
+1.10.3
+- Fixed crash bug in CHAIN when used in a program and prevented continued
+  program execution when LOAD and MERGE used in a program.
+- Minor code updates and improvements.
+
+
+June 2023
+=========
+1.10.4
+- DIR commands now show a sorted list instead of the order the directory 
+  entries are read from the filesystem.
+- Added line by line paging for PDIR*.

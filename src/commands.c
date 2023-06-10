@@ -8,6 +8,7 @@
 
 #define STREAM_STDIO  -1 
 #define STREAM_PRINTER -2
+#define SORTLIST_ALLOC 10
 
 static int  doComRun(int comnum, st_runline *runline, int pc);
 static bool setBlockEnd(st_runline *runline, int start_com, int end_com);
@@ -1848,7 +1849,6 @@ int comCont(int comnum, st_runline *runline)
 int comLoad(int comnum, st_runline *runline)
 {
 	st_value result;
-	int linenum;
 	int err;
 	int pc = 1;
 
@@ -1859,31 +1859,33 @@ int comLoad(int comnum, st_runline *runline)
 		return err;
 	}
 
-	linenum = runline->parent->linenum;
-
-	if (comnum != COM_MERGE)
-		err = loadProgram(result.sval,0,TRUE);
-	else
-		err = loadProgram(result.sval,linenum,FALSE);
-
-	if (err == OK)
+	switch(comnum)
 	{
-		/* If we were in a running program reset to run new code from
-		   the start */
-		if (comnum != COM_MERGE && linenum)
-			resetProgram();
-		else if (comnum != COM_CHAIN)
-			ready();
+	case COM_CHAIN:
+	case COM_LOAD:
+		err = loadProgram(result.sval,0,comnum,TRUE);
+		break;
+	case COM_MERGE:
+		err = loadProgram(result.sval,runline->parent->linenum,comnum,TRUE);
+		break;
+	default:
+		assert(0);
 	}
 
 	clearValue(&result);
+	if (err != OK) return err;
 
-	if (comnum == COM_CHAIN && err == OK)
+	resetProgram();
+
+	if (comnum == COM_LOAD || comnum == COM_MERGE)
 	{
-		puts("RUNNING...");
-		return doComRun(COM_CHAIN,runline,pc);
+		ready();
+		return OK;
 	}
-	return err;
+
+	/* Run the new program. This won't cause recursion because if we're 
+	   currently running it'll be terminated when this function returns */
+	return doComRun(COM_CHAIN,prog_first_line->first_runline,pc);
 }
 
 
@@ -1977,6 +1979,7 @@ int comDir(int comnum, st_runline *runline)
 	struct stat fs;
 	bool pause;
 	bool show_links;
+	int i;
 	int err;
 	int pc;
 	int len;
@@ -1990,9 +1993,13 @@ int comDir(int comnum, st_runline *runline)
 	int num_cols;
 	int col_cnt;
 	int pause_linecnt;
+	int sortlist_cnt;
+	int sortlist_alloc;
 	char dirname[PATH_MAX+1];
 	char path[PATH_MAX*2+10];
 	char linkpath[PATH_MAX+1];
+	char **sortlist;
+	char *direntry;
 	char *link;
 	size_t basic_bytes;
 	size_t total_bytes;
@@ -2013,6 +2020,21 @@ int comDir(int comnum, st_runline *runline)
 		}
 	}
 
+	bas_cnt = 0;
+	file_cnt = 0;
+	dir_cnt = 0;
+	link_cnt = 0;
+	other_cnt = 0;
+	basic_bytes = 0;
+	total_bytes = 0;
+	sortlist = NULL;
+	sortlist_cnt = 0;
+	sortlist_alloc = 0;
+	show_links = (comnum == COM_DIRL || comnum == COM_PDIRL);
+
+	num_cols = (term_cols < 40) ? 1 : (term_cols + 7) / 40;
+	col_cnt = 0;
+
 	if (!(dir = opendir(dirname)))
 	{
 		err = ERR_CANT_OPEN_DIR;
@@ -2026,37 +2048,26 @@ int comDir(int comnum, st_runline *runline)
 
 	printf("\nDIRECTORY: %s\n\n",dirname);
 
-	bas_cnt = 0;
-	file_cnt = 0;
-	dir_cnt = 0;
-	link_cnt = 0;
-	other_cnt = 0;
-	basic_bytes = 0;
-	total_bytes = 0;
-	pause_linecnt = 0;
-	pause = (comnum == COM_PDIR || comnum == COM_PDIRL);
-	show_links = (comnum == COM_DIRL || comnum == COM_PDIRL);
-
-	num_cols = (term_cols < 40) ? 1 : (term_cols + 7) / 40;
-	col_cnt = 0;
-
+	/* Read dir entries */
 	while((de = readdir(dir)))
 	{
-		if (pause && pause_linecnt == term_rows - 3)
-		{
-			pressAnyKey("Press any key to page: ");
-			pause_linecnt = 0;
-		}
 		if (last_signal == SIGINT) goto DONE;
-		
-		len = strlen(de->d_name);
-		
+
+		if (sortlist_cnt >= sortlist_alloc)
+		{
+			sortlist_alloc += SORTLIST_ALLOC;
+			sortlist = (char **)realloc(
+				sortlist,sizeof(char *) * sortlist_alloc);
+			assert(sortlist);
+		}
 		snprintf(path,PATH_MAX,"%s/%s",dirname,de->d_name);
 		if (lstat(path,&fs) == -1)
 		{
 			err = ERR_READ;
 			goto DONE;
 		}
+		len = strlen(de->d_name);
+		direntry = NULL;
 
 		switch(fs.st_mode & S_IFMT)
 		{
@@ -2071,8 +2082,7 @@ int comDir(int comnum, st_runline *runline)
 			   integers */
 			kbytes = fs.st_size / kilobyte;
 			bytes = (fs.st_size % kilobyte) / 100;
-			len = printf("%-25s  %3d.%dK",
-				de->d_name,kbytes,bytes);
+			asprintf(&direntry,"%-25s  %3d.%dK",de->d_name,kbytes,bytes);
 			total_bytes += fs.st_size;
 			++file_cnt;
 			break;
@@ -2092,7 +2102,7 @@ int comDir(int comnum, st_runline *runline)
 			}
 			else sprintf(path,"%s@",de->d_name);
 
-			len = printf("%-33s",path);
+			asprintf(&direntry,"%-33s",path);
 			++link_cnt;
 			break;
 
@@ -2100,34 +2110,48 @@ int comDir(int comnum, st_runline *runline)
 			if (!strcmp(de->d_name,".") || !strcmp(de->d_name,".."))
 				continue;
 			sprintf(path,"%s/",de->d_name);
-			len = printf("%-33s",path);
+			asprintf(&direntry,"%-33s",path);
 			++dir_cnt;
 			break;
 
 		case S_IFSOCK:
 			sprintf(path,"%s=",de->d_name);
-			len = printf("%-33s",path);
+			asprintf(&direntry,"%-33s",path);
 			++other_cnt;
 			break;
 
 		default:
-			len = printf("%-33s",de->d_name);
+			asprintf(&direntry,"%-33s",de->d_name);
 			++other_cnt;
 		}
+		sortlist[sortlist_cnt++] = direntry;
+	}
 
-		if (len > 33 || ++col_cnt == num_cols)
+	col_cnt = 1;
+	pause = (comnum == COM_PDIR || comnum == COM_PDIRL);
+
+	/* Sort and print */
+	qsort(sortlist,sortlist_cnt,sizeof(char *),qsortCompare);
+	for(i=pause_linecnt=0;i < sortlist_cnt;++i,++col_cnt)
+	{
+		printf("%s",sortlist[i]);
+		if (col_cnt == num_cols)
 		{
-			putchar('\n');
 			col_cnt = 0;
-			++pause_linecnt;
+			putchar('\n');
+			if (pause && ++pause_linecnt >= term_rows - 2)
+			{
+				if (pressAnyKey("Space to advance 1 line, any other key to page: ") != ' ')
+					pause_linecnt = 0;
+				if (last_signal == SIGINT) goto DONE;
+			}
 		}
 		else printf("       ");
 	}
-
-	if (col_cnt) putchar('\n');
+	if (i % num_cols) putchar('\n');
 
 	if (pause && pause_linecnt >= term_rows - 7)
-		pressAnyKey("Press any key to page: ");
+		pressAnyKey("Press any key for summary: ");
 
 	if (last_signal != SIGINT)
 	{
@@ -2141,6 +2165,8 @@ int comDir(int comnum, st_runline *runline)
 	DONE:
 	closedir(dir);
 	clearValue(&pattern);
+	for(i=0;i < sortlist_cnt;++i) free(sortlist[i]);
+	free(sortlist);
 	return err;
 }
 

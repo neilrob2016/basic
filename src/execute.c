@@ -63,24 +63,32 @@ bool execProgLine(st_progline *progline)
 bool execRunLine(st_runline *runline)
 {
 	st_token *token;
+	int linenum;
+	int comnum;
 	int err;
 
 	assert(runline->num_tokens);
 
 	/* First token is either a variable or command */
 	token = &runline->tokens[0];
+	linenum = runline->parent->linenum;
 	errno = 0;
 
 	switch(token->type)
 	{
 	case TOK_VAR:
-		printTrace(runline->parent->linenum,"COM","LET");
+		printTrace(linenum,"COM","LET");
 		err = comDimLet(COM_LET,runline);
 		break;
 
 	case TOK_COM:
-		printTrace(runline->parent->linenum,"COM",token->str);
-		err = (*command[token->subtype].funcptr)(token->subtype,runline);
+		printTrace(linenum,"COM",token->str);
+		comnum = token->subtype;
+		err = (*command[comnum].funcptr)(token->subtype,runline);
+		if (err != OK) break;
+
+		/* Can't continue executing a program with these in it */
+		if (comnum == COM_LOAD || comnum == COM_MERGE) return FALSE;
 		break;
 
 	default:
@@ -96,9 +104,7 @@ bool execRunLine(st_runline *runline)
 		interrupted_runline = runline;
 		setValue(interrupted_var->value,VAL_NUM,NULL,1);
 
-		setValue(
-			break_line_var->value,
-			VAL_NUM,NULL,runline->parent->linenum);
+		setValue(break_line_var->value,VAL_NUM,NULL,linenum);
 
 		/* Delete user variables. This can be used in conjunction with 
 		   other ON BREAK settings hence it comes first */
@@ -116,7 +122,7 @@ bool execRunLine(st_runline *runline)
 			if (pushGosub(on_jump[BRK_GOSUB],runline)) return TRUE;
 			doError(ERR_MAX_RECURSION,runline->parent);
 		}
-		else if (runline->parent->linenum) goto BREAK_AT_LINE;
+		else if (linenum) goto BREAK_AT_LINE;
 		else puts("*** BREAK ***");
 
 		return FALSE;
@@ -136,7 +142,8 @@ bool execRunLine(st_runline *runline)
 			}
 			if (on_jump[TERM_GOSUB])
 			{
-				if (pushGosub(on_jump[TERM_GOSUB],runline)) return TRUE;
+				if (pushGosub(on_jump[TERM_GOSUB],runline))
+					return TRUE;
 				doError(ERR_MAX_RECURSION,runline->parent);
 			}
 		}
@@ -149,7 +156,7 @@ bool execRunLine(st_runline *runline)
 		/* Store last error, system error and line number */
 		setValue(error_var->value,VAL_NUM,NULL,err);
 		setValue(syserror_var->value,VAL_NUM,NULL,errno);
-		setValue(error_line_var->value,VAL_NUM,NULL,runline->parent->linenum);
+		setValue(error_line_var->value,VAL_NUM,NULL,linenum);
 
 		if (flags.on_error_cont) return TRUE;
 
@@ -172,11 +179,9 @@ bool execRunLine(st_runline *runline)
 
 	BREAK_AT_LINE:
 	if (flags.child_process)
-	{
-		printf("*** BREAK in line %d, pid %u ***\n",
-			runline->parent->linenum,getpid());
-	}
-	else printf("*** BREAK in line %d ***\n",runline->parent->linenum);
+		printf("*** BREAK in line %d, pid %u ***\n",linenum,getpid());
+	else
+		printf("*** BREAK in line %d ***\n",linenum);
 
 	return FALSE;
 }

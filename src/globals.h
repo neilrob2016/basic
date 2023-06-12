@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
-#define VERSION     "1.10.4"
+#define VERSION     "1.10.5"
 
 #define STDIN  0
 #define STDOUT 1
@@ -96,8 +96,8 @@
 #define DEL2      127
 #define ESC       27
 
-#define TERM_ROWS         80
-#define TERM_COLS         25
+#define TERM_ROWS         25
+#define TERM_COLS         80
 #define MAX_UCHAR         0xFF
 #define MAX_RETURN_STACK  1000
 #define MAX_INDEXES       5

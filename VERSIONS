@@ -327,3 +327,8 @@ June 2023
 - DIR commands now show a sorted list instead of the order the directory 
   entries are read from the filesystem.
 - Added line by line paging for PDIR*.
+
+1.10.5
+- Fixed bug where the default term_rows and term_cols values were the wrong way 
+  around! Just noticed after all these years but then they're only used when the
+  winsize ioctl() won't give that info (eg with some dumb terminals).

@@ -180,6 +180,7 @@ void init(void)
 	last_signal = 0;
 
 	bzero(stream,sizeof(stream));
+	bzero(stream_flags,sizeof(stream_flags));
 	bzero(popen_fp,sizeof(popen_fp));
 	bzero(dir_stream,sizeof(dir_stream));
 

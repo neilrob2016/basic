@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
-#define VERSION     "1.10.5"
+#define VERSION     "1.10.6"
 
 #define STDIN  0
 #define STDOUT 1
@@ -80,7 +80,7 @@
 #define IS_FLOAT(NUM) ((long)(NUM) != NUM)
 #define FREE(M)       { if (M) free(M); M = NULL; }
 #define SGN(X)        ((X) < 0 ? -1 : ((X) > 0 ? 1 : 0))
-#define NOT_COMMA(PC) !IS_OP_TYPE(&runline->tokens[(PC)],OP_COMMA)
+#define NOT_COMMA(PC) ((PC) >= runline->num_tokens || !IS_OP_TYPE(&runline->tokens[(PC)],OP_COMMA))
 #define PRINT(S,L)    write(STDOUT,S,L)
 
 #define CHECK_STREAM(S) \
@@ -119,6 +119,9 @@
 #define DEGS_PER_RADIAN 57.2957795
 
 #define S_IFANY 0
+
+/* Only 1 stream flags for now */
+#define SFLAG_NO_WAIT_NL 1
 
 /********************************* STRUCTURES ********************************/
 
@@ -1374,8 +1377,8 @@ st_func function[NUM_FUNCTIONS] =
 	{ "WAITPID$",       1, { VAL_NUM }, funcWaitCheckStr },
 	{ "CHECKPID$",      1, { VAL_NUM }, funcWaitCheckStr },
 	{ "KILL",           2, { VAL_NUM, VAL_NUM }, funcKill },
-	{ "PIPE",           1, { VAL_UNDEF }, funcPipe },
-	{ "CONNECT",        1, { VAL_STR }, funcConnect },
+	{ "PIPE",          -1, { VAL_UNDEF }, funcPipe },
+	{ "CONNECT",       -1, { VAL_STR }, funcConnect },
 
 	/* 85 */
 	{ "LISTEN",         2, { VAL_NUM, VAL_NUM }, funcListen },
@@ -1604,7 +1607,7 @@ enum
 
 	NUM_ON_JUMPS
 };
-	
+
 /*********************************** GLOBALS *********************************/
 
 EXTERN struct termios saved_tio;
@@ -1675,7 +1678,11 @@ EXTERN int indent_spaces;
 EXTERN int last_signal;
 EXTERN int watch_alloc;
 EXTERN int watch_cnt;
+
+/* Should have combined these into a struct but too much code to change to 
+   make it worth doing now */
 EXTERN int stream[MAX_STREAMS];
+EXTERN u_char stream_flags[MAX_STREAMS];
 
 EXTERN FILE *popen_fp[MAX_STREAMS];
 EXTERN DIR *dir_stream[MAX_DIR_STREAMS];

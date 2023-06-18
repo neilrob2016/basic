@@ -821,12 +821,14 @@ simply for consistency with fork(), popen() and system().
 See: programs/exec.bas
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-PIPE(<array variable>)
+PIPE(<array variable>[,"no_wait_nl"])
 
 The array variable must be a single dimension array of size 2. On success
 the function returns 1 and the array is populated with 2 file streams for
 both sides of the pipe which are read/write. See programs/pipes*.bas
-for example code.
+for example code. If no_wait_nl is given then INPUT will not wait for a newline
+when reading data from the pipe but will return with whatever it finds
+(including nothing).
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 KILL(<process id>,<signal number>)
@@ -868,7 +870,7 @@ See programs/waitpid.bas & checkpid.bas for example code.
 
 TCP
 ===============================================================================
-CONNECT(<hostname[:port]>)
+CONNECT(<hostname[:port]>[,"no_wait_nl"])
 
 Attempts to make a TCP connection to the hostname on the optional port (23 if
 not specified). If name resolution fails then $reserror is set, or if the
@@ -876,6 +878,9 @@ connect itself fails then $syserror is set. It returns a read/write stream
 for the connection. See programs/tcp_client.bas. eg:
 
    DIM sock = connect("localhost:25")
+
+If no_wait_nl is given then INPUT will not wait for a newline when reading data
+from the pipe but will return with whatever it finds (including nothing).
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 HOST2IP$(<hostname>)

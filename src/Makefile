@@ -1,20 +1,19 @@
 CC=cc -D NO_OS_SET
 
 # Linux 
-#CC=cc $(LFA)
-#LIBS=-lm -lcrypt
+CC=cc $(LFA)
+LIBS=-lm -lcrypt
 
 # MacOS
-#CC=cc $(LFA)
-#LIBS=-lm 
+CC=cc $(LFA)
+LIBS=-lm
 
 # ARM
 #CC=aarch64-poky-linux-gcc --sysroot=/opt/fsl-imx-wayland/4.19-warrior/sysroots/aarch64-poky-linux
 
-
 # Old versions of Linux that only support DES in crypt()
 #CC=cc $(LFA) -D DES_ONLY
-#LIBS=-lm -lcrypt
+#LIBS=-lm 
 
 # FreeBSD 6
 #CC=cc $(LFA) -D DES_ONLY -D NO_LOG2
@@ -24,9 +23,17 @@ CC=cc -D NO_OS_SET
 #CC=cc $(LFA) -D NO_CRYPT 
 #LIBS=-lm
 
-# -Wextra produces lots of extranious warnings but can be useful now and then
-#ARGS=-Wall -Wextra -pedantic -c -g -O
+# -fsanitize is for runtime OOB memory checking. Debug use only as it has a 
+# severe speed penalty and doesn't work with -O. Linker needs it too
+#SANI=-fsanitize=address
+
+# Standard compile args
 ARGS=-Wall -pedantic -c -g -O
+# -Wextra can add a lot of irrelevant warnings but sometimes useful
+#ARGS=-Wall -Wextra -pedantic -c -g -O
+# Sanitize doesn't work with optimisation
+#ARGS=-Wall -pedantic -c -g $(SANI)
+
 OBJS=\
 	main.o \
 	keyboard.o \
@@ -51,7 +58,7 @@ OBJS=\
 DEPS=globals.h Makefile
 
 basic: $(OBJS) Makefile
-	$(CC) $(OBJS) $(LIBS) -o basic
+	$(CC) $(OBJS) $(LIBS) $(SANI) -o basic
 
 build_date:
 	echo "#define BUILD_DATE \"`date +'%Y-%m-%d %T %Z'`\"" > build_date.h

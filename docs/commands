@@ -741,7 +741,8 @@ eg:
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 INPUT [#<stream>],<var>
 
-This inputs an entire line from stdin or a stream - \n is the terminator. eg:
+This inputs an entire line from stdin, stderr or a stream - \n is the 
+terminator (unless "no_wait_nl" option given with pipe or socket). eg:
 
    10 DIM name
    20 PRINT "What is your name> ";
@@ -757,14 +758,21 @@ or stream input:
    50 WEND 
    60 CLOSE fd
 
-If the #0 special stream is given then it will read from stdin. eg:
+If the #0 special stream is given then it will read from stdin and #-2 will
+read from stderr. eg:
 
-   INPUT #0,data
+   INPUT #0,indata
+   INPUT #-2,errdata
 
-Note that this command cannot read from the printer (stream -1) and it is not
+Note that this command cannot read from the printer (stream #-1) and it is not
 designed to read binary files (though it can). It also resets the $interrupted 
 system variable to 0 before it starts. See programs/input3.bas to see how to 
 work around interruptions.
+
+Also with sockets and pipes if the "no_wait_nl" option was given on creation
+then you must either check $eof, canread() or select() because INPUT will
+return with whatever it funds regardless of whether its terminated with a
+newline. This includes nothing at all.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 PDIR  [<directory path>]
@@ -790,12 +798,13 @@ PRINT can also write to streams eg:
 fp = open("hello","w")
 print #fp,"hello world"
 
-There are currently 2 special streams, 0 = stdout, -1 = printer. These exist to
-allow generic print subroutines which will print to whatever stream they are
-set to. eg:
+There are currently 3 special streams, 0 = stdout, -1 = printer, -2 = stderr
+These exist to allow generic print subroutines which will print to whatever 
+stream they are set to. eg:
 
 print #0,"This will print to stdout"
 print #-1,"This will print to the printer"
+print #-2,"This will print to stderr"
 lp = -1
 print #lp,"So will this"
 

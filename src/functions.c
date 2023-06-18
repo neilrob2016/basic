@@ -5,7 +5,8 @@
 
 #define FIND_FREE_STREAM(S) \
 	for(S=0;S < MAX_STREAMS && stream[S];++S); \
-	if (S == MAX_STREAMS) return ERR_MAX_STREAMS;
+	if (S == MAX_STREAMS) return ERR_MAX_STREAMS; \
+	stream_flags[S] = 0;
 
 
 #define MATCHPATH(T) \
@@ -115,8 +116,8 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 		}
 
 		/* Undefined value means we want a pointer to the variable
-		   itself */
-		if (ptype == VAL_UNDEF)
+		   itself unless its pipes 2nd arg which needs to be a string */
+		if (ptype == VAL_UNDEF && (func != FUNC_PIPE || !pnum))
 		{
 			token = &runline->tokens[pc2];
 			if (token->type != TOK_VAR)
@@ -139,7 +140,8 @@ int callFunction(st_runline *runline, int *pc, st_value *result)
 				goto ERROR;
 
 			/* Check value is the correct type for the param */
-			if (ptype != VAL_BOTH && vallist[pnum].type != ptype)
+			if (!(func == FUNC_PIPE && vallist[pnum].type == VAL_STR) &&
+			    (ptype != VAL_BOTH && vallist[pnum].type != ptype))
 			{
 				err = ERR_INVALID_ARG;
 				goto ERROR;
@@ -2031,9 +2033,19 @@ int funcPipe(int func, st_var **var, st_value *vallist, st_value *result)
 
 	/* Find 2 free streams */
 	FIND_FREE_STREAM(snum1);
-
 	for(snum2=snum1+1;snum2 < MAX_STREAMS && stream[snum2];++snum2);
 	if (snum2 == MAX_STREAMS) return ERR_MAX_STREAMS;
+
+	/* Check flag */
+	if (result->dval > 1)
+	{
+		if (!strcasecmp(vallist[1].str,"no_wait_nl"))
+		{
+			stream_flags[snum1] = SFLAG_NO_WAIT_NL;
+			stream_flags[snum2] = SFLAG_NO_WAIT_NL;
+		}
+		else return ERR_INVALID_ARG;
+	}
 
 	/* Use socketpair() because it creates 2 way descriptors. pipe() only
 	   creates 1 way */
@@ -2082,6 +2094,14 @@ int funcConnect(int func, st_var **var, st_value *vallist, st_value *result)
 	/* Find free stream */
 	FIND_FREE_STREAM(snum);
 
+	if (result->dval > 1)
+	{
+		if (!strcasecmp(vallist[1].str,"no_wait_nl"))
+			stream_flags[snum] = SFLAG_NO_WAIT_NL;
+		else
+			return ERR_INVALID_ARG;
+	}
+
 	if ((sock = socket(AF_INET,SOCK_STREAM,0)) == -1)
 		return ERR_SOCKET;	
 
@@ -2122,6 +2142,7 @@ int funcConnect(int func, st_var **var, st_value *vallist, st_value *result)
 	}
 
 	stream[snum] = sock;
+
 	setValue(result,VAL_NUM,NULL,snum+1);
 	setValue(eof_var->value,VAL_NUM,NULL,0);
 	setValue(syserror_var->value,VAL_NUM,NULL,0);

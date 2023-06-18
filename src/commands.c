@@ -6,8 +6,10 @@
 	if ((S) < 0 || (S) >= MAX_STREAMS) return ERR_INVALID_STREAM; \
 	if (!dir_stream[S]) return ERR_STREAM_NOT_OPEN;
 
-#define STREAM_STDIO  -1 
+#define STREAM_STDIO   -1 
 #define STREAM_PRINTER -2
+#define STREAM_STDERR  -3
+
 #define SORTLIST_ALLOC 10
 
 static int  doComRun(int comnum, st_runline *runline, int pc);
@@ -2253,6 +2255,9 @@ int comPrint(int comnum, st_runline *runline)
 			/* #0 = stdout. With INPUT its stdin */
 			fd = STDOUT;
 			break;
+		case STREAM_STDERR:
+			fd = STDERR;
+			break;
 		case STREAM_PRINTER:
 			if (!(pfp = popen("lp > /dev/null","w")))
 				return ERR_LP;
@@ -2349,7 +2354,7 @@ int comInput(int comnum, st_runline *runline)
 	st_token *token;
 	st_keybline kbline;
 	struct timeval tv;
-	struct timeval *tvptr;
+	struct timeval *tvptr = NULL;
 	fd_set mask;
 	char esc_str[MAX_ESC_SEQ_LEN+1];
 	char cstr[2];
@@ -2367,6 +2372,7 @@ int comInput(int comnum, st_runline *runline)
 	bool dir_read = FALSE;
 	bool set_value = FALSE;
 	bool insert = TRUE;
+	bool is_con = FALSE;
 	double sleep_time = 0;
 
 	setValue(eof_var->value,VAL_NUM,NULL,0);
@@ -2400,12 +2406,23 @@ int comInput(int comnum, st_runline *runline)
 				/* #0 = stdin. With PRINT its stdout */
 				fd = STDIN;
 				break;
+			case STREAM_STDERR:
+				fd = STDERR;
+				break;
 			case STREAM_PRINTER:
 				/* Can't read from the printer */
 				return ERR_LP_INPUT;
 			default:
 				CHECK_STREAM(snum);
 				fd = stream[snum];
+				/* If socket or pipe we don't hang in select() 
+				   call waiting for \n if this flag set */
+				if (stream_flags[snum] & SFLAG_NO_WAIT_NL)
+				{
+					tv.tv_sec = 0;
+					tv.tv_usec = 0;
+					tvptr = &tv;
+				}
 			}
 		}
 		if (pc >= runline->num_tokens - 1 || NOT_COMMA(pc))
@@ -2420,7 +2437,6 @@ int comInput(int comnum, st_runline *runline)
 
 	initValue(&result);
 	initValue(&icnt_or_key);
-	tvptr = NULL;
 	bzero(&kbline,sizeof(kbline));
 
 	if (comnum == COM_CINPUT)
@@ -2431,9 +2447,8 @@ int comInput(int comnum, st_runline *runline)
 	else str = kbline.str;
 
 	/* Get index */
-	if (runline->num_tokens > 2)
+	if (runline->num_tokens > 2 && ++pc < runline->num_tokens)
 	{
-		++pc;
 		if (IS_OP_TYPE(&runline->tokens[pc],OP_L_BRACKET) &&
 		    (err = getVarIndexes(runline,&pc,&icnt_or_key,index)) != OK)
 		{
@@ -2487,6 +2502,7 @@ int comInput(int comnum, st_runline *runline)
 	}
 
 	esc_cnt = 0;
+	is_con = (fd == STDIN || fd == STDERR);
 
 	/* Wait for input then set variable */
 	while(1)
@@ -2505,11 +2521,9 @@ int comInput(int comnum, st_runline *runline)
 			case -1:
 				err = ERR_READ;
 				goto DONE;
-
 			case 0:
 				setValue(eof_var->value,VAL_NUM,NULL,1);
 				goto DONE;
-
 			default:
 				break;
 			}
@@ -2520,11 +2534,18 @@ int comInput(int comnum, st_runline *runline)
 				cstr[1] = 0;
 				goto DONE;
 			}
+			/* Don't bother processing if socket or pipe */
+			if (stream_flags[snum] & SFLAG_NO_WAIT_NL)
+			{
+				addCharToKeyLine(&kbline,c,is_con,insert);
+				str = kbline.str;
+				continue;
+			}
 
 			/* Some escape codes for the INPUT command are processed
 			   differently to the BASIC command prompt hence some
 			   duplicated code here. Also esc_cnt is only set when
-			   reading from STDIN, not a file. */
+			   reading from STDIN or STDERR, not a file. */
 			if (esc_cnt)
 			{
 				esc_str[esc_cnt++] = c;
@@ -2575,7 +2596,7 @@ int comInput(int comnum, st_runline *runline)
 					{
 						addDefModStrToKeyLine(
 							&kbline,mod_index,
-							fd == STDIN,insert);
+							is_con,insert);
 					}
 					break;
 				case ESC_TERM_F1:
@@ -2588,7 +2609,7 @@ int comInput(int comnum, st_runline *runline)
 					{
 						addDefModStrToKeyLine(
 							&kbline,mod_index,
-							fd == STDIN,insert);
+							is_con,insert);
 					}
 					break;
 				default:
@@ -2600,7 +2621,8 @@ int comInput(int comnum, st_runline *runline)
 			switch(c)
 			{
 			case ESC:
-				if (fd == STDIN)
+				/* If console trap escape */
+				if (is_con)
 				{
 					esc_str[0] = ESC;
 					esc_cnt = 1;
@@ -2611,12 +2633,12 @@ int comInput(int comnum, st_runline *runline)
 
 			case '\n':
 				err = OK;
-				if (fd == STDIN) PRINT("\n",1);
+				if (is_con) PRINT("\n",1);
 				goto DONE;
 
 			case DEL1:
 			case DEL2:
-				if (fd == STDIN)
+				if (is_con)
 					delCharFromKeyLine(&kbline,TRUE);
 				else
 					addCharToKeyLine(&kbline,c,FALSE,FALSE);
@@ -2624,9 +2646,11 @@ int comInput(int comnum, st_runline *runline)
 
 			default:
 				if (defmod[(u_char)c])
-					addDefModStrToKeyLine(&kbline,(u_char)c,fd == STDIN,insert);
-				else
-					addCharToKeyLine(&kbline,c,fd == STDIN,insert);
+				{
+					addDefModStrToKeyLine(
+						&kbline,(u_char)c,is_con,insert);
+				}
+				else addCharToKeyLine(&kbline,c,is_con,insert);
 				/* kbline.str is realloced so reassign */
 				str = kbline.str;
 			}

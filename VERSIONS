@@ -332,3 +332,10 @@ June 2023
 - Fixed bug where the default term_rows and term_cols values were the wrong way 
   around! Just noticed after all these years but then they're only used when the
   winsize ioctl() won't give that info (eg with some dumb terminals).
+
+1.10.6
+- Added "no_wait_nl" option to connect() and pipe() functions. See docs for
+  more info.
+- Added #-2 special stream for stderr
+- Fixed some memory access out of bounds bugs
+- Added optional -fsanitize=address to Makefile

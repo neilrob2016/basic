@@ -254,7 +254,7 @@ void addCharToKeyLine(st_keybline *line, char c, bool write_stdout, bool insert)
 	char *e;
 
 	/* Ignore non printing characters */
-	if (c < 32) return;
+	if (c < 32 && c != '\n' && c != '\t') return;
 
 	assert(line->len <= line->alloced);
 

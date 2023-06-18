@@ -1,7 +1,7 @@
    10 ' 
-   20 ' Simple TCP client. Connects to the local sendmail server       
+   20 ' Simple TCP client. Run tcp_server.bas first.
    30 ' 
-   40 DIM sock = connect("localhost:25")
+   40 DIM sock = connect("localhost:4000","no_wait_nl")
    50 IF NOT sock THEN 
    60     IF $syserror THEN 
    70         PRINT "ERROR: Unable to connect: ",syserror$($syserror)
@@ -31,6 +31,6 @@
   310             PRINT "*** Connection closed ***"
   320             STOP 
   330         FI 
-  340         PRINT l
+  340         PRINT l;
   350     FI 
   360 WEND 

@@ -19,20 +19,24 @@
   190     PRINT "Child writing 'hello' to parent.."
   200     PRINT #p(2),"hello"
   210     PRINT "Child waiting for parent data..."
-  220     INPUT #p(2),a
-  230     PRINT "Child got: ",a
-  240     STOP 
-  250     ' 
-  260     DEFAULT 
-  270     CLOSE p(2)
-  280     PRINT "Parent waiting for child data..."
-  290     WHILE NOT canread(p(1))
-  300         PRINT "No data from child..."
-  310         SLEEP 0.5
-  320     WEND 
-  330     INPUT #p(1),a
-  340     PRINT "Parent got: ",a
-  350     SLEEP 2
-  360     PRINT "Parent writing 'wibble' to child..."
-  370     PRINT #p(1),"wibble"
-  380 CHOSEN 
+  220     WHILE NOT canread(p(2))
+  230         PRINT "No data from parent..."
+  240         SLEEP 0.5
+  250     WEND 
+  260     INPUT #p(2),a
+  270     PRINT "Child got: ",a
+  280     STOP 
+  290     ' 
+  300     DEFAULT 
+  310     CLOSE p(2)
+  320     PRINT "Parent waiting for child data..."
+  330     WHILE NOT canread(p(1))
+  340         PRINT "No data from child..."
+  350         SLEEP 0.5
+  360     WEND 
+  370     INPUT #p(1),a
+  380     PRINT "Parent got: ",a
+  390     SLEEP 2
+  400     PRINT "Parent writing 'wibble' to child..."
+  410     PRINT #p(1),"wibble"
+  420 CHOSEN 

@@ -164,25 +164,35 @@ int comListHistory(int comnum, st_runline *runline)
 
 
 
-/*** Renumber the lines. Format:
-     RENUM
-     RENUM <gap>
-     RENUM <gap> FROM <start line>
+/*** Renumber the lines or automate line number generation for entering a
+     program. Format:
+     RENUM [<gap> [FROM <start line>]]
+     AUTO  [<start line> [BY <gap>]]
  ***/
-int comRenum(int comnum, st_runline *runline)
+int comRenumAuto(int comnum, st_runline *runline)
 {
 	st_progline *pl;
 	st_runline *rl;
 	st_token *token;
 	st_value result;
 	char linestr[20];
-	int gap;
 	int linenum;
 	int pc;
 	int err;
 	int num_tokens;
-	int start = 0;
+	int midcom;
+	u_int gap;
+	u_int first;
+	u_int start_line = 0;
 	int start_set = 0;
+
+	if (comnum == COM_AUTO)
+	{
+		if (runline->parent->linenum) return ERR_NOT_ALLOWED_IN_PROG;
+		midcom = COM_STEP;
+		autoline_step = 10;
+	}
+	else midcom = COM_FROM;
 
 	if (runline->num_tokens > 1)
 	{
@@ -192,13 +202,13 @@ int comRenum(int comnum, st_runline *runline)
 			return err;
 
 		if (result.dval < 1) return ERR_INVALID_ARG;
-		gap = (int)result.dval;
+		first = (u_int)result.dval;
 
 		if (pc < runline->num_tokens)
 		{
 			/* Get the start line */
 			if (runline->num_tokens - pc < 2 ||
-			    !IS_COM_TYPE(&runline->tokens[pc],COM_FROM))
+			    !IS_COM_TYPE(&runline->tokens[pc],midcom))
 				return ERR_SYNTAX;
 
 			++pc;
@@ -208,15 +218,28 @@ int comRenum(int comnum, st_runline *runline)
 				return err;
 			}
 			if (result.dval < 1) return ERR_INVALID_LINENUM;
-			start = (int)result.dval;
-			start_set = 1;
+			if (comnum == COM_AUTO)
+				autoline_step = (int)result.dval;
+			else
+			{
+				start_line = (u_int)result.dval;
+				start_set = 1;
+			}
 		}
 	}
-	else gap = 10;
+	else first = 10;
 
+	if (comnum == COM_AUTO)
+	{
+		autoline_curr = first;
+		setAutoLineStr();
+		puts("Enter an empty line or Control-C to exit autoline mode:");
+		return OK;
+	}
 	if (!prog_first_line) return OK;
+	gap = first;
 
-	linenum = (start_set ? start : gap);
+	linenum = (start_set ? start_line : gap);
 
 	/* Reset all renumbered flags */
 	for(rl=prog_first_line->first_runline;rl;rl=rl->next)
@@ -224,7 +247,7 @@ int comRenum(int comnum, st_runline *runline)
 
 	for(pl=prog_first_line;pl;pl=pl->next)
 	{
-		if (pl->linenum < start) continue;
+		if (pl->linenum < start_line) continue;
 
 		/* Go through all runlines and change any commands that
 		   pointed to this line number */
@@ -1875,6 +1898,7 @@ int comLoad(int comnum, st_runline *runline)
 	}
 
 	clearValue(&result);
+
 	if (err != OK) return err;
 
 	resetProgram();
@@ -1884,6 +1908,11 @@ int comLoad(int comnum, st_runline *runline)
 		ready();
 		return OK;
 	}
+
+	/* The file might contain direct commands (can't save these from BASIC
+	   but can manually edit the file to contain them in which case we
+	   won't have a program */
+	if (!prog_first_line) return OK;
 
 	/* Run the new program. This won't cause recursion because if we're 
 	   currently running it'll be terminated when this function returns */
@@ -1954,7 +1983,7 @@ int comSave(int comnum, st_runline *runline)
 		err = ERR_CANT_OPEN_FILE;
 		goto ERROR;
 	}
-	printf("Saving \"%s\": ",filename);
+	printf("Saving \"%s\"... ",filename);
 	fflush(stdout);
 
 	err = listProgram(fp,0,0,FALSE);

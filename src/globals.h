@@ -59,8 +59,8 @@
 #endif
 
 #define INTERPRETER "NRJ-BASIC"
-#define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2023"
-#define VERSION     "1.10.6"
+#define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2024"
+#define VERSION     "1.11.0"
 
 #define STDIN  0
 #define STDOUT 1
@@ -759,6 +759,7 @@ enum
 	/* 105 */
 	COM_TERMSIZE,
 	COM_LABEL,
+	COM_AUTO,
 
 	NUM_COMMANDS
 };
@@ -793,7 +794,7 @@ DECL_COM(ForEach)
 DECL_COM(NextEach)
 DECL_COM(Loop)
 DECL_COM(Lend)
-DECL_COM(Renum)
+DECL_COM(RenumAuto)
 DECL_COM(Read)
 DECL_COM(Restore)
 DECL_COM(Exit)
@@ -893,7 +894,7 @@ st_com command[NUM_COMMANDS] =
 
 	/* 35 */
 	{ "LEND",       comLend },
-	{ "RENUM",      comRenum },
+	{ "RENUM",      comRenumAuto },
 	{ "DATA",       comDoNothing },
 	{ "READ",       comRead },
 	{ "RESTORE",    comRestore },
@@ -991,7 +992,8 @@ st_com command[NUM_COMMANDS] =
 
 	/* 105 */
 	{ "TERMSIZE",   comUnexpected },
-	{ "LABEL",      comDoNothing }
+	{ "LABEL",      comDoNothing },
+	{ "AUTO",       comRenumAuto }
 };
 #else
 extern st_com command[NUM_COMMANDS];
@@ -1661,6 +1663,7 @@ EXTERN char *defmod[DEFMOD_SIZE];
 EXTERN char **watch_vars;
 EXTERN char *cmdline_run_arg;
 EXTERN char build_options[100];
+EXTERN char autoline_str[100];
 
 EXTERN int kilobyte;
 EXTERN int processes_cnt;
@@ -1678,6 +1681,8 @@ EXTERN int indent_spaces;
 EXTERN int last_signal;
 EXTERN int watch_alloc;
 EXTERN int watch_cnt;
+EXTERN int autoline_step;
+EXTERN u_int autoline_curr;
 
 /* Should have combined these into a struct but too much code to change to 
    make it worth doing now */
@@ -1851,4 +1856,5 @@ void   printTrace(int linenum, char *type, char *name);
 void   ready(void);
 void   prompt(void);
 char   pressAnyKey(char *msg);
+void   setAutoLineStr(void);
 void   doExit(int code);

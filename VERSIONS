@@ -339,3 +339,10 @@ June 2023
 - Added #-2 special stream for stderr
 - Fixed some memory access out of bounds bugs
 - Added optional -fsanitize=address to Makefile
+
+
+April 2024
+==========
+1.11.0
+- Added AUTO command.
+- Minor bug fixes and code updates.

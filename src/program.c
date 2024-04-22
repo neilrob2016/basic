@@ -106,7 +106,6 @@ bool processProgLine(st_progline *progline)
 
 	assert(progline->first_runline);
 
-	ok = TRUE;
 	token = &progline->first_runline->tokens[0];
 	if (IS_NUM(token) && token->subtype == NUM_INT)
 	{
@@ -138,26 +137,27 @@ bool processProgLine(st_progline *progline)
 		else
 		{
 			/* Just have a line number, nothing else which means
-			   delete the program line in the program */
-			if (!deleteProgLineByNum(token->dval))
+			   delete the program line in the program unless we're
+			   in autoline mode in which case just exit that mode */
+			if (autoline_curr) autoline_curr = 0;
+			else if (!deleteProgLineByNum(token->dval))
 				doError(ERR_NO_SUCH_LINE,NULL);
 
 			deleteProgLine(progline,TRUE,TRUE);
 		}
+		return TRUE;
 	}
-	else
-	{
-		/* Need to add them because line could be: [abc]: goto "abc" */
-		if ((err = createLabels(progline)) != OK)
-		{
-			doError(err,NULL);
-			ok = FALSE;
-		}
-		/* Is a direct command - execute then delete */
-		else ok = execProgLine(progline);
 
-		deleteProgLine(progline,FALSE,FALSE);
+	/* Need to add them because line could be: [abc]: goto "abc" */
+	if ((err = createLabels(progline)) != OK)
+	{
+		doError(err,NULL);
+		ok = FALSE;
 	}
+	/* Is a direct command - execute then delete */
+	else ok = execProgLine(progline);
+
+	deleteProgLine(progline,FALSE,FALSE);
 	return ok;
 }
 
@@ -307,6 +307,7 @@ int loadProgram(char *filename, u_int merge_linenum, int comnum, bool verbose)
 	int alloced;
 	int len;
 	int err;
+	int cnt;
 
 	line = NULL;
 	fp = NULL;
@@ -319,9 +320,9 @@ int loadProgram(char *filename, u_int merge_linenum, int comnum, bool verbose)
 	
 	if (verbose)
 	{
-		printf("%s \"%s\": ",
-			comnum == COM_CHAIN ? "CHAINING" : 
-			          (comnum == COM_LOAD ? "LOADING" : "MERGING"),
+		printf("%s \"%s\"... ",
+			comnum == COM_CHAIN ? "Chaining" : 
+			          (comnum == COM_LOAD ? "Loading" : "Merging"),
 			matchpath);
 		fflush(stdout);
 	}
@@ -335,6 +336,7 @@ int loadProgram(char *filename, u_int merge_linenum, int comnum, bool verbose)
 	
 	alloced = 0;
 	errno = 0;
+	cnt = 0;
 
 	while(1)
 	{
@@ -358,9 +360,8 @@ int loadProgram(char *filename, u_int merge_linenum, int comnum, bool verbose)
 			if (ret) line[len] = 0;
 			if (line[0])
 			{
-				if (verbose) PRINT("=",1);
-
 				if (!(progline = tokenise(line))) break;
+				++cnt;
 
 				/* If we're mergeing make sure we don't 
 				   overwrite merge line else we'll crash */
@@ -389,7 +390,7 @@ int loadProgram(char *filename, u_int merge_linenum, int comnum, bool verbose)
 	}
 	fclose(fp);
 	FREE(line);
-	if (verbose) putchar('\n');
+	if (verbose) printf("%d lines.\n",cnt);
 	return OK;
 
 	ERROR: 
@@ -438,6 +439,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 	int line_width;
 	int print_colon;
 	int ret;
+	int cnt;
 	int i;
 
 	if_indent = 0;
@@ -445,13 +447,10 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 	pause_linecnt = 0;
 	token = NULL;
 
-	for(progline=prog_first_line;
+	for(progline=prog_first_line,cnt=0;
 	    progline && (!to || progline->linenum <= to) && last_signal != SIGINT;
-	    progline=progline->next)
+	    progline=progline->next,++cnt)
 	{
-		/* Show printer listing progress by line */
-		if (fp != stdout) PRINT("=",1);
-
 		prev_token = token;
 
 		/* Can't just continue else indentation fails */
@@ -673,7 +672,7 @@ int listProgram(FILE *fp, u_int from, u_int to, bool pause)
 		}
 		if (print_line) fputc('\n',fp);
 	}
-	if (fp != stdout) write(STDOUT,"\n",1);
+	if (fp != stdout) printf("%d lines.\n",cnt);
 	return OK;
 }
 

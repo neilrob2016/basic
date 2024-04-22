@@ -23,8 +23,9 @@ bool initMemValue(st_value *val, int size)
 	val->sval = NULL;
 	val->shmlen = size;
 
-	/* Allocate shared memory. Use pointer as key. size+1 for \0 */
-	if ((val->shmid = shmget((key_t)val,size+1,IPC_CREAT | 0666)) < 0)
+	/* Allocate shared memory. Use random number as the key though this is
+	   no guarantee against collisions. size+1 for \0 */
+	if ((val->shmid = shmget((key_t)random(),size+1,IPC_CREAT | IPC_EXCL | 0666)) < 0)
 		return FALSE;
 	if ((val->sval = shmat(val->shmid,NULL,0)) == (char *)-1)
 		return FALSE;

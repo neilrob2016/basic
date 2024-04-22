@@ -1,17 +1,18 @@
    10 ' Child process gets data from user via parent and shared memory 
    20 DIM a@(10)
-   30 ' 
-   40 CHOOSE fork()
-   50     CASE -1: STOP 
-   60     ' 
-   70     CASE 0
-   80     WHILE 1
-   90         PRINT "Child has: ",a
-  100         SLEEP 1
-  110     WEND 
-  120     ' 
-  130     DEFAULT 
-  140     WHILE 1
-  150         PRINT ">";: INPUT a
-  160     WEND 
-  170 CHOSEN 
+   30 PRINT "Type something..."
+   40 ' 
+   50 CHOOSE fork()
+   60     CASE -1: STOP 
+   70     ' 
+   80     CASE 0
+   90     WHILE 1
+  100         PRINT "Child has: ",a
+  110         SLEEP 1
+  120     WEND 
+  130     ' 
+  140     DEFAULT 
+  150     WHILE 1
+  160         PRINT ">";: INPUT a
+  170     WEND 
+  180 CHOSEN 

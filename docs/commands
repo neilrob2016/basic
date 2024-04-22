@@ -16,6 +16,21 @@ code is given the the exit code is zero. eg:
 
 Program 
 ===============================================================================
+AUTO [<start line> [STEP <increment>]]
+
+This allows you to enter a program without having to enter the line number
+for each line. Start line is the line it will start at and the step is how
+much to increment the line number by. Default is 10 for both values.
+eg:
+] auto 100 step 20
+Autoline mode. Enter an empty line or Control-C to exit:
+  100 print "hello"
+  120 goto 100
+  140 
+] 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 DELETE <line>
 DELETE <from line number> TO <to line number>/END
 DELETE TO <line>
@@ -120,9 +135,7 @@ READY
 ] 
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-RENUM 
-RENUM <line number spacing>
-RENUM <line number spacing> FROM <start line>
+RENUM [<line number spacing> [FROM <start line>]]
 
 This renumbers all the lines in the program including any in a GOTO, GOSUB, 
 RESTORE and AUTORETORE call so long as they are not part of an expression. The

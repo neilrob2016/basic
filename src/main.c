@@ -3,7 +3,7 @@
 
  An old fashioned line BASIC interpreter for Unix.
 
- Copyright (C) Neil Robertson 2016-2023
+ Copyright (C) Neil Robertson 2016-2024
  *****************************************************************************/
 
 #define MAINFILE
@@ -170,6 +170,8 @@ void init(void)
 {
 	int i;
 
+	srandom(time(0));
+
 	flags.draw_prompt = TRUE;
 	tracing_mode = TRACING_OFF;
 	indent_spaces = 4;
@@ -178,6 +180,8 @@ void init(void)
 	term_rows = TERM_ROWS;
 	term_cols = TERM_COLS;
 	last_signal = 0;
+	autoline_curr = 0;
+	autoline_step = 0;
 
 	bzero(stream,sizeof(stream));
 	bzero(stream_flags,sizeof(stream_flags));
@@ -245,6 +249,7 @@ void sigHandler(int sig)
 	if (sig == SIGINT && !flags.executing)
 	{
 		puts("*** BREAK ***");
+		autoline_curr = 0;
 		prompt();
 	}
 }

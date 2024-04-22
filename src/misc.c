@@ -67,9 +67,13 @@ void prompt(void)
 {
 	/* Turned off by EDIT command */
 	if (flags.draw_prompt)
-		PRINT("] ",2);
-	else
-		flags.draw_prompt = TRUE;
+	{
+		if (autoline_curr)
+			PRINT(autoline_str,strlen(autoline_str));
+		else
+			PRINT("] ",2);
+	}
+	else flags.draw_prompt = TRUE;
 }
 
 
@@ -109,6 +113,14 @@ char pressAnyKey(char *msg)
 	}
 
 	return c;
+}
+
+
+
+
+void setAutoLineStr(void)
+{
+	snprintf(autoline_str,sizeof(autoline_str),"%5u ",autoline_curr);
 }
 
 

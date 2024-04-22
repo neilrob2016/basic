@@ -63,6 +63,9 @@ bool getLine(char **line)
 	esc_cnt = 0;
 	insert = TRUE;
 
+	/* Printing of the autoline line number is done in prompt() */
+	if (autoline_curr) addWordToKeyLine(autoline_str);
+
 	while((c = getchar()) != EOF)
 	{
 		/* If ^C reset */
@@ -89,6 +92,9 @@ bool getLine(char **line)
 			{
 			case ESC_K:
 			case ESC_UP_ARROW:
+				/* Not while autoline is on */
+				if (autoline_curr) continue;
+
 				/* Move up the history. Could just update 
 				   input_pos here but that messes up the 
 				   command history */
@@ -100,6 +106,8 @@ bool getLine(char **line)
 				
 			case ESC_J:
 			case ESC_DOWN_ARROW:
+				if (autoline_curr) continue;
+
 				/* Move down the history */
 				clearScreenLine(input_pos);
 				old_pos = nextKeyLine(old_pos);
@@ -173,6 +181,11 @@ bool getLine(char **line)
 		case '\n':
 			kbl = &keyb_line[input_pos];
 			*line = NULL;
+			if (autoline_curr)
+			{
+				autoline_curr += autoline_step;
+				setAutoLineStr();
+			}
 
 			if (kbl->len)
 			{

@@ -751,11 +751,15 @@ eg:
    DEFMOD "F2","print"
    DEFMOD "#","@"
 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-INPUT [#<stream>],<var>
+These can be cleared by the CLEARMODS command and will also be cleared by
+CLEAR and NEW.
 
-This inputs an entire line from stdin, stderr or a stream - \n is the 
-terminator (unless "no_wait_nl" option given with pipe or socket). eg:
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+INPUT  [#<stream>],<var>
+
+These inputs an entire line from stdin, stderr or a stream - \n is the 
+terminator (unless "no_wait_nl" option given with pipe or socket). The 
+resulting variable type is a string. eg:
 
    10 DIM name
    20 PRINT "What is your name> ";
@@ -786,6 +790,30 @@ Also with sockets and pipes if the "no_wait_nl" option was given on creation
 then you must either check $eof, canread() or select() because INPUT will
 return with whatever it funds regardless of whether its terminated with a
 newline. This includes nothing at all.
+
+DEFMOD mappings will be used with this command.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+NINPUT  [#<stream>],<var>
+
+Number input. This is identical to INPUT except:
+- It only accepts and prints digits as valid input
+- It sets the resulting variable type to a number. eg:
+- DEFMOD mappings are ignored even if mapped to numbers.
+
+eg:
+
+] list
+   10 PRINT "Enter string>";: INPUT a
+   20 PRINT "Times 2 = ",a * 2
+   30 PRINT "Enter number>";: NINPUT b
+   40 PRINT "Times 2 = ",b * 2
+] run
+Enter string>123
+Times 2 = 123123
+Enter number>123
+Times 2 = 246
+
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 PDIR  [<directory path>]

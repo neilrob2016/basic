@@ -346,3 +346,10 @@ April 2024
 1.11.0
 - Added AUTO command.
 - Minor bug fixes and code updates.
+
+
+July 2024
+=========
+1.12.0
+- Added NINPUT command
+- Fixed incorrect behaviour of some arrow commands with INPUT.

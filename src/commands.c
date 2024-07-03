@@ -2373,8 +2373,9 @@ int comPrint(int comnum, st_runline *runline)
 
 
 
-/*** Input a whole line or single character. The single character option also
-     has a timeout. Too many gotos in this function. Oh well. ***/
+/*** Input a string, number or single character. The single character option 
+     also has a timeout. There are too many gotos in this function and its far 
+     too long. Oh well. ***/
 int comInput(int comnum, st_runline *runline)
 {
 	struct dirent *de;
@@ -2421,7 +2422,7 @@ int comInput(int comnum, st_runline *runline)
 		/* For a directory read do it immediately */
 		if (result.dval >= MAX_STREAMS)
 		{
-			if (comnum == COM_CINPUT) return ERR_DIR_CINPUT;
+			if (comnum != COM_INPUT) return ERR_DIR_INPUT_COM;
 			snum = result.dval - MAX_STREAMS - 1;
 			CHECK_DIR_STREAM(snum);
 			dir_read = TRUE;
@@ -2594,6 +2595,11 @@ int comInput(int comnum, st_runline *runline)
 				case ESC_J:
 				case ESC_UP_ARROW:
 				case ESC_DOWN_ARROW:
+				case ESC_PAGE_UP:
+				case ESC_PAGE_DOWN:
+					/* Do nothing, just ignore */
+					break;
+
 				case ESC_LEFT_ARROW:
 					leftCursor(&kbline);
 					break;
@@ -2610,16 +2616,15 @@ int comInput(int comnum, st_runline *runline)
 					insert = !insert;
 					break;
 
-				case ESC_PAGE_UP:
-				case ESC_PAGE_DOWN:
-					/* Do nothing, just ignore */
-					break;
-
 				case ESC_CON_F1:
 				case ESC_CON_F2:
 				case ESC_CON_F3:
 				case ESC_CON_F4:
 				case ESC_CON_F5:
+					/* Too complicated to parse the defmod
+					   value and only print and use the 
+					   digits */
+					if (comnum == COM_NINPUT) break; 
 					mod_index = 256 + (seq_num - ESC_CON_F1);
 					if (defmod[mod_index])
 					{
@@ -2633,6 +2638,7 @@ int comInput(int comnum, st_runline *runline)
 				case ESC_TERM_F3:
 				case ESC_TERM_F4:
 				case ESC_TERM_F5:
+					if (comnum == COM_NINPUT) break;
 					mod_index = 256 + (seq_num - ESC_TERM_F1);
 					if (defmod[mod_index])
 					{
@@ -2676,10 +2682,25 @@ int comInput(int comnum, st_runline *runline)
 			default:
 				if (defmod[(u_char)c])
 				{
-					addDefModStrToKeyLine(
-						&kbline,(u_char)c,is_con,insert);
+					if (comnum != COM_NINPUT)
+					{
+						addDefModStrToKeyLine(
+							&kbline,
+							(u_char)c,
+							is_con,insert);
+					}
+				}
+				else if (comnum == COM_NINPUT)
+				{
+					/* Only add to input if user pressed
+					   a number key, else ignore */
+					if (isdigit(c))
+						addCharToKeyLine(&kbline,c,is_con,insert);
+					else
+						continue;
 				}
 				else addCharToKeyLine(&kbline,c,is_con,insert);
+
 				/* kbline.str is realloced so reassign */
 				str = kbline.str;
 			}
@@ -2691,7 +2712,10 @@ int comInput(int comnum, st_runline *runline)
 	{
 		/* Set variable with whatever we have in case we're been
 		   interrupted by a signal */
-		setValue(&result,VAL_STR,str,0);
+		if (comnum == COM_NINPUT)
+			setValue(&result,VAL_NUM,NULL,str ? atof(str) : 0);
+		else
+			setValue(&result,VAL_STR,str,0);
 		err = setVarValue(token->var,&icnt_or_key,index,&result,FALSE);
 	}
 	if (str != cstr && str) free(str);

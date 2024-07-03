@@ -60,7 +60,7 @@
 
 #define INTERPRETER "NRJ-BASIC"
 #define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2024"
-#define VERSION     "1.11.0"
+#define VERSION     "1.12.0"
 
 #define STDIN  0
 #define STDOUT 1
@@ -403,7 +403,7 @@ enum
 	ERR_DIR_SEEK,
 
 	/* 60 */
-	ERR_DIR_CINPUT,
+	ERR_DIR_INPUT_COM,
 	ERR_NOT_ALLOWED_IN_PROG,
 	ERR_CANT_MERGE,
 	ERR_SLEEP,
@@ -548,7 +548,7 @@ char *error_str[NUM_ERRORS] =
 	"Cannot seek in directory stream",
 
 	/* 60 */
-	"Cannot read a directory stream with CINPUT",
+	"Cannot read a directory stream with CINPUT or NINPUT",
 	"Command not allowed in a program",
 	"Cannot merge due to line overwrite",
 	"Sleep failure",
@@ -684,79 +684,80 @@ enum
 	COM_RM,
 	COM_INPUT,
 	COM_CINPUT,
-	COM_CLOSE,
+	COM_NINPUT,
 
 	/* 55 */
+	COM_CLOSE,
 	COM_CLOSEDIR,
 	COM_DELKEY,
 	COM_ON,
 	COM_ERROR,
-	COM_BREAK,
 
 	/* 60 */
+	COM_BREAK,
 	COM_CONT,
 	COM_CLS,
 	COM_LOCATE,
 	COM_PEN,
-	COM_PAPER,
 
 	/* 65 */
+	COM_PAPER,
 	COM_ATTR,
 	COM_SCROLL,
 	COM_CURSOR,
 	COM_PLOT,
-	COM_LINE,
 
 	/* 70 */
+	COM_LINE,
 	COM_RECT,
 	COM_CIRCLE,
 	COM_PAUSE,
 	COM_TRON,
-	COM_TRONS,
 
 	/* 75 */
+	COM_TRONS,
 	COM_TROFF,
 	COM_WRON,
 	COM_WROFF,
 	COM_INDENT,
-	COM_SEED,
 
 	/* 80 */
+	COM_SEED,
 	COM_DEFEXP,
 	COM_DEFMOD,
 	COM_DUMP,
 	COM_LDUMP,
-	COM_FULL,
 
 	/* 85 */
+	COM_FULL,
 	COM_HISTORY,
 	COM_HELP,
 	COM_EDIT,
 	COM_EVAL,
-	COM_CHOOSE,
 
 	/* 90 */
+	COM_CHOOSE,
 	COM_CASE,
 	COM_DEFAULT,
 	COM_CHOSEN,
 	COM_WATCH,
-	COM_UNWATCH,
 
 	/* 95 */
+	COM_UNWATCH,
 	COM_DEG,
 	COM_RAD,
 	COM_KILLALL,
 	COM_END,
-	COM_FROM,
 
 	/* 100 */
+	COM_FROM,
 	COM_MOVE,
 	COM_CONTLOOP,
 	COM_STON,
 	COM_STOFF,
-	COM_RENAME,
 
 	/* 105 */
+	COM_RENAME,
 	COM_TERMSIZE,
 	COM_LABEL,
 	COM_AUTO,
@@ -918,79 +919,80 @@ st_com command[NUM_COMMANDS] =
 	{ "RM",         comRm },
 	{ "INPUT",      comInput },
 	{ "CINPUT",     comInput },
-	{ "CLOSE",      comClose },
+	{ "NINPUT",     comInput },
 
 	/* 55 */
+	{ "CLOSE",      comClose },
 	{ "CLOSEDIR",   comCloseDir },
 	{ "DELKEY",     comDelKey },
 	{ "ON",         comOn },
 	{ "ERROR",      comUnexpected },
-	{ "BREAK",      comBreak },
 
 	/* 60 */
+	{ "BREAK",      comBreak },
 	{ "CONT",       comCont },
 	{ "CLS",        comCls },
 	{ "LOCATE",     comLocatePlot },
 	{ "PEN",        comColour },
-	{ "PAPER",      comColour },
 
 	/* 65 */
+	{ "PAPER",      comColour },
 	{ "ATTR",       comAttr },
 	{ "SCROLL",     comScroll },
 	{ "CURSOR",     comCursor },
 	{ "PLOT",       comLocatePlot },
-	{ "LINE",       comLineRect },
 
 	/* 70 */
+	{ "LINE",       comLineRect },
 	{ "RECT",       comLineRect },
 	{ "CIRCLE",     comCircle },
 	{ "SLEEP",      comSleep },
 	{ "TRON",       comTrace },
-	{ "TRONS",      comTrace },
 
 	/* 75 */
+	{ "TRONS",      comTrace },
 	{ "TROFF",      comTrace },
 	{ "WRON",       comWrap },
 	{ "WROFF",      comWrap },
 	{ "INDENT",     comIndent },
-	{ "SEED",       comSeed },
 
 	/* 80 */
+	{ "SEED",       comSeed },
 	{ "DEFEXP",     comDefExp },
 	{ "DEFMOD",     comDefMod },
 	{ "DUMP",       comDump },
 	{ "LDUMP",      comDump },
-	{ "FULL",       comUnexpected },
 
 	/* 85 */
+	{ "FULL",       comUnexpected },
 	{ "HISTORY",    comListHistory },
 	{ "HELP",       comHelp },
 	{ "EDIT",       comEdit },
 	{ "EVAL",       comEval },
-	{ "CHOOSE",     comChoose },
 
 	/* 90 */
+	{ "CHOOSE",     comChoose },
 	{ "CASE",       comDoNothing },
 	{ "DEFAULT",    comDoNothing },
 	{ "CHOSEN",     comChosen },
 	{ "WATCH",      comWatch },
-	{ "UNWATCH",    comUnwatch },
 
 	/* 95 */
+	{ "UNWATCH",    comUnwatch },
 	{ "DEG",        comAngleType },
 	{ "RAD",        comAngleType },
 	{ "KILLALL",    comKillAll },
 	{ "END",        comUnexpected },
-	{ "FROM",       comUnexpected },
 
 	/* 100 */
+	{ "FROM",       comUnexpected },
 	{ "MOVE",       comDeleteMove },
 	{ "CONTLOOP",   comContLoop },
 	{ "STON",       comStrict },
 	{ "STOFF",      comStrict },
-	{ "RENAME",     comRename },
 
 	/* 105 */
+	{ "RENAME",     comRename },
 	{ "TERMSIZE",   comUnexpected },
 	{ "LABEL",      comDoNothing },
 	{ "AUTO",       comRenumAuto }

@@ -721,12 +721,12 @@ int renameProgVarsAndDefExps(st_token *fromtok, char *to, int *cnt)
 	/* If its a variable or defexp name then change them */
 	if ((var = getVariable(fromtok)))
 	{
-		if (!validVariableName(to)) return ERR_INVALID_VAR_NAME;
+		if (!validName(to)) return ERR_INVALID_VAR_NAME;
 		renameVariable(var,to);
 	}
 	else if ((exp = getDefExp(fromtok->str,fromtok->len)))
 	{
-		if (!validVariableName(to)) return ERR_INVALID_DEFEXP_NAME;
+		if (!validName(to)) return ERR_INVALID_DEFEXP_NAME;
 		renameDefExp(exp,to);
 	}
 

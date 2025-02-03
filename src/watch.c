@@ -36,7 +36,7 @@ int addWatchVar(char *varname)
 {
 	int pos;
 
-	if (!validVariableName(varname)) return ERR_INVALID_VAR_NAME;
+	if (!validName(varname)) return ERR_INVALID_VAR_NAME;
 	if (findWatchVar(varname) != -1) return ERR_VAR_ALREADY_WATCHED;
 
 	/* Find null entry */

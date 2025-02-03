@@ -19,7 +19,7 @@ int createDefExp(st_runline *runline)
 	if (getVariable(tok)) return ERR_VAR_ALREADY_HAS_NAME;
 
 	/* Same naming rules as variables */
-	if (!validVariableName(tok->str)) return ERR_INVALID_DEFEXP_NAME;
+	if (!validName(tok->str)) return ERR_INVALID_DEFEXP_NAME;
 	
 	assert((exp = (st_defexp *)malloc(sizeof(st_defexp))));
 	exp->name = strdup(tok->str);

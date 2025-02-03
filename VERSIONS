@@ -353,3 +353,10 @@ July 2024
 1.12.0
 - Added NINPUT command
 - Fixed incorrect behaviour of some arrow commands with INPUT.
+
+
+February 2025
+=============
+1.12.1
+- Fixed NINPUT bug where it caused a crash if no arguments were given.
+- Minor code updates.

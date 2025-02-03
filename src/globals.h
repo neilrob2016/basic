@@ -59,8 +59,8 @@
 #endif
 
 #define INTERPRETER "NRJ-BASIC"
-#define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2024"
-#define VERSION     "1.12.0"
+#define COPYRIGHT   "Copyright (C) Neil Robertson 2016-2025"
+#define VERSION     "1.12.1"
 
 #define STDIN  0
 #define STDOUT 1
@@ -1758,7 +1758,6 @@ int setVarValue(
 	st_value *icnt_or_key, int *index, st_value *value, bool force);
 int deleteMapKeyValue(st_var *var, char *key);
 st_keyval *findKeyValue(st_var *var, char *key);
-int  validVariableName(char *name);
 void deleteVariable(st_var *var, st_runline *runline);
 void deleteVariables(st_runline *runline);
 void renameVariable(st_var *var, char *new_name);
@@ -1851,6 +1850,7 @@ st_label *getLabel(char *name, int len);
 int  dumpLabels(FILE *fp, char *pat);
 
 /* misc.c */
+int    validName(char *name);
 int    qsortCompare(const void *p1, const void *p2);
 void   doError(int err, st_progline *progline);
 double getCurrentTime(void);

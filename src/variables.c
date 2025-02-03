@@ -1,8 +1,5 @@
 #include "globals.h"
 
-/* Anything not in this list is already an operator */
-#define INVALID_NAME_CHARS "`'$&!?{}[].\\"
-
 /* Don't want all the system variables indexed by '$', use 2nd character
    instead */
 #define INDEX_CHAR(N) (N[0] == '$' ? N[1] : N[0])
@@ -205,7 +202,7 @@ int getOrCreateTokenVariable(st_token *token)
 
 	/* Has to be created using DIM if in strict mode */
 	if (strict_mode) return ERR_UNDEFINED_VAR_OR_FUNC;
-	if (!validVariableName(token->str)) return ERR_INVALID_VAR_NAME;
+	if (!validName(token->str)) return ERR_INVALID_VAR_NAME;
 	token->var = createVariable(token->str,VAR_STD,0,NULL);
 	return OK;
 }
@@ -626,19 +623,6 @@ st_keyval *findKeyValue(st_var *var, char *key)
 	for(kv=var->first_keyval[(int)key[0]];kv;kv=kv->next)
 		if (kv->key_len == len && !strcmp(kv->key,key)) return kv;
 	return NULL;
-}
-
-
-
-
-/*** Returns TRUE if its a valid variable name else FALSE ***/
-int validVariableName(char *name)
-{
-	char *s;
-
-	if (!name || name[0] == '$') return FALSE;
-	for(s=name;*s;++s) if (strchr(INVALID_NAME_CHARS,*s)) return FALSE;
-	return TRUE;
 }
 
 

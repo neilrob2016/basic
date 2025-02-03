@@ -1,10 +1,27 @@
 #include "globals.h"
 
+/*** Returns TRUE if its a valid variable/defexp name else FALSE ***/
+int validName(char *name)
+{       
+	char *s;
+
+	/* Can't have a name starting with a digit */
+	if (!name || isdigit(name[0])) return FALSE;
+
+	/* Only Aa-Zz, 0-9 and '_' allowed */
+	for(s=name;*s;++s) if (!isalnum(*s) && *s != '_') return FALSE;
+	return TRUE;
+}     
+
+
+
+
 int qsortCompare(const void *p1, const void *p2)
-{                       
+{		       
 	/* p1 and p2 are actually point to (char **), not (char *) */
 	return strcmp(*(char **)p1, *(char **)p2);
 }     
+
 
 
 

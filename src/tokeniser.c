@@ -373,6 +373,7 @@ bool commandSanityCheck(st_progline *progline)
 		case COM_CLOSE:
 		case COM_INPUT:
 		case COM_CINPUT:
+		case COM_NINPUT:
 		case COM_DELETE:
 		case COM_PEN:
 		case COM_PAPER:

@@ -716,7 +716,7 @@ int comDimLet(int comnum, st_runline *runline)
 			}
 
 			/* Check name only contains valid characters */
-			if (!validVariableName(token->str))
+			if (!validName(token->str))
 			{
 				err = ERR_INVALID_VAR_NAME;
 				goto ERROR;
@@ -737,7 +737,7 @@ int comDimLet(int comnum, st_runline *runline)
 			if (!token->var)
 			{
 				/* Create the variable */
-				if (!validVariableName(token->str)) 
+				if (!validName(token->str)) 
 					return ERR_INVALID_VAR_NAME;
 				token->var = createVariable(
 					token->str,type,index_cnt,index);
@@ -1679,8 +1679,7 @@ int comRead(int comnum, st_runline *runline)
 
 		if (create_var)
 		{
-			if (!validVariableName(token->str)) 
-				return ERR_INVALID_VAR_NAME;
+			if (!validName(token->str)) return ERR_INVALID_VAR_NAME;
 			token->var = createVariable(
 				token->str,VAR_STD,(int)icnt_or_key.dval,index);
 		}
